@@ -7,7 +7,7 @@ Contact: fabrice_moyen@fr.ibm.com
 Readme release v1.0 – September, 5th 2008
 -------------------------------------------------------------------------------------
 
-The goal of these little fab-tools is to ease the administration and monitoring of several AIX systems (full scale servers or logical partitions), allowing you to:
+The goal of these little fab-tools is to ease the administration and monitoring of several AIX/Linux systems running onto IBM Power platform (full scale servers or logical partitions), allowing you to:
 
   + start an nmon collection on all your servers in one command
   + execute one command on all your servers in one shot
