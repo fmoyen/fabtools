@@ -1,0 +1,28 @@
+{VIOC2:root}/ # mkdir /usr/lpp/aix4pub
+{VIOC2:root}/ #  cd /usr/lpp/aix4pub
+{VIOC2:root}/usr/lpp/aix4pub # tar xvf /fabtools/netperf.tar
+x netperf+ttcp
+x netperf+ttcp/Makefile.ttcp, 184 bytes, 1 media blocks.
+x netperf+ttcp/arr_script, 9195 bytes, 18 media blocks.
+x netperf+ttcp/install, 15737 bytes, 31 media blocks.
+x netperf+ttcp/netperf, 139484 bytes, 273 media blocks.
+x netperf+ttcp/netperf.linux, 85864 bytes, 168 media blocks.
+x netperf+ttcp/netperf.oe, 335872 bytes, 656 media blocks.
+x netperf+ttcp/netperf.ps, 2753143 bytes, 5378 media blocks.
+x netperf+ttcp/netperf_nt.exe, 207496 bytes, 406 media blocks.
+x netperf+ttcp/netserver, 142585 bytes, 279 media blocks.
+x netperf+ttcp/netserver.linux, 87559 bytes, 172 media blocks.
+x netperf+ttcp/netserver.oe, 344064 bytes, 672 media blocks.
+x netperf+ttcp/netserver_nt.exe, 209568 bytes, 410 media blocks.
+x netperf+ttcp/snapshot_script, 7772 bytes, 16 media blocks.
+x netperf+ttcp/tcp_range_script, 2855 bytes, 6 media blocks.
+x netperf+ttcp/tcp_rr_script, 3264 bytes, 7 media blocks.
+x netperf+ttcp/tcp_stream_script, 3053 bytes, 6 media blocks.
+x netperf+ttcp/ttcp, 41467 bytes, 81 media blocks.
+x netperf+ttcp/ttcp.c, 26710 bytes, 53 media blocks.
+x netperf+ttcp/udp_rr_script, 2967 bytes, 6 media blocks.
+x netperf+ttcp/udp_stream_script, 3002 bytes, 6 media blocks.
+{VIOC2:root}/usr/lpp/aix4pub # cd netperf+ttcp
+{VIOC2:root}/usr/lpp/aix4pub/netperf+ttcp # ./install
+0513-095 The request for subsystem refresh was completed successfully.
+{VIOC2:root}/usr/lpp/aix4pub/netperf+ttcp #                                      

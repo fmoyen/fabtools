@@ -1,0 +1,14 @@
+Exemple de scripts additionnels à faire executer par fnmon
+Some Examples of additional scripts to have run by fnmon
+
+---------------------------------------------------------
+Monitoring one DS4000 storage system:
+monitor_DS4000.sh
+
+Need modifications to define the ControllerA and ControllerB IP addresses.
+
+Start with : 
+ADD_SCRIPT="/usr/opt/fabtools/repository/add_scripts/monitor_DS4000.sh \$NSECOND \$NCOUNT \$REP_PARAM \$REP_RACINE" # Install Variable
+into the fabtools.conf file.
+
+---------------------------------------------------------

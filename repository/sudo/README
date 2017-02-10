@@ -1,0 +1,13 @@
+Example of /etc/sudoers file provided for user oracle.
+This file must be edited vi visudo.
+
+This file will allow Oracle user to use the fnmon / fnmoncheck / fnmonstop without having the root's password.
+the user must use : 
+
+sudo fnmon -s 10 -c 10 -r test 
+sudo fnmoncheck
+sudo fnmonstop BAD ...
+
+Don't forget to add the binary path (generally /usr/opt/fabtools) into the user's .profile file.
+
+You need to modify the /etc/sudoers file into for all the NODES.

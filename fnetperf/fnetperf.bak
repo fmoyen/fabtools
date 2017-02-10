@@ -1,0 +1,276 @@
+#!/bin/ksh
+#set -x
+
+####################################################################
+# Fab NetPerf
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+#
+# Release : V1.2 - August, 17th 2007
+#    -> Changed REP_RACINE by REP_TOOLS
+# Release : V1.1 - March, 2sd 2007
+#    -> Added parameters -s -p -h and functions usage / help
+#    -> The bandwidth is given on screen while running
+# Release : V1.0 - February, 23rd 2007
+#    -> First development
+#
+# BUG KNOWN
+# if the suffix or prefix is beginning by "-" (like in "-adm")
+
+####################################################################
+# 
+# Test the network bandwidth between the local host and all the
+# others nodes listed in $NODES
+# 
+# Possibility to add :
+#   a prefix to the name of each node in $NODES (adm_$NODES)
+#   a suffix to the name of each node in $NODES (${NODES}_adm)
+# 
+# Possibility to modify :
+#   the list of nodes defined in $NODES
+#
+####################################################################
+
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 9`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+
+#-----------------------------------------------------------
+# Analyse the parameters of the scripts
+
+PARAM=$*
+NBRE_PARAM=$#
+NBRE_OPTION=$NBRE_PARAM
+SCRIPT=$0
+
+OKs=0
+OKp=0
+OKn=0
+
+
+#-----------------------------------------------------------
+# VARIABLES
+
+REP_RESULT=$REP_TOOLS/fnetperf
+PREFIX=""
+SUFFIX=""
+LOCAL_NODE=`uname -n`
+LIST_OF_NODES=$NODES
+
+
+#-----------------------------------------------------------
+# USAGE AND HELP FUNCTIONS
+
+function usage
+{
+   echo
+   echo "usage: $SCRIPT"
+   echo "        [-p <prefix>] [-s <suffix>]"
+   echo "        [-nodes <node1,node2,node3...>]"
+   echo "        [-h]"
+   echo
+   echo "type $SCRIPT -h for complete informations."
+   echo
+}
+
+function help
+{
+   usage
+   echo "fnetperf evaluates the network performance between the local node and all the others nodes"
+   echo "as described into the fabtools.conf file."
+   echo "($NODES)"
+   echo
+   echo "The possible options are -->"
+   echo "-p <prefix>   optional : a prefix for the server names known in the fabtools.conf file"
+   echo "-s <suffix>   optional : a suffix for the server names known in the fabtools.conf file"
+   echo "-nodes <list of nodes>" 
+   echo "              optional : use this list of nodes rather than the one defined into"
+   echo "                         the fabtools.conf file"
+   echo
+   echo "For example, $SCRIPT -s _adm means:"
+   echo "    If the list of nodes is : server1, server2, server3"
+   echo "    the script will do the network performance tests for the IP "
+   echo "    server1_adm, server2_adm, server3_adm"
+   echo
+   echo "other parameters are available into the fabtools.conf file."
+   echo
+}
+
+
+#-----------------------------------------------------------
+# Analyse of the paramaters
+
+
+COUNT=1
+while [ $COUNT -le $NBRE_OPTION ]
+do
+   case $1 in
+   -h)
+      help
+      exit 0
+   ;;
+
+   -s)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" -o OKs -eq 1 ]
+      then
+         usage
+         exit 1
+      fi
+
+      SUFFIX="$2"
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKs=1
+   ;;
+
+   -p)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" -o OKp -eq 1 ]
+      then
+         usage
+         exit 1
+      fi
+
+      PREFIX="$2"
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKp=1
+   ;;
+
+   -nodes)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" -o OKn -eq 1 ]
+      then
+         usage
+         exit 1
+      fi
+
+      LIST_OF_NODES=`echo $2 | sed "s/,/ /g"`
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKn=1
+   ;;
+
+   *)
+      usage
+      exit 1
+   ;;
+
+   esac
+
+   COUNT=`expr $COUNT + 1`
+   shift 1
+done
+
+
+#-----------------------------------------------------------
+# Build the name of the $FILE_RESULT
+
+FILE_RESULT="$REP_RESULT/fnetperf_${PREFIX}${LOCAL_NODE}${SUFFIX}_`date +%d%b%y_%H%M%S`.txt"
+
+
+#-----------------------------------------------------------
+# Modification of $LIST_OF_NODES to add PREFIX and SUFFIX to each node 
+
+tempo=""
+for j in $LIST_OF_NODES
+do
+  tempo="$tempo ${PREFIX}${j}${SUFFIX}"
+done
+
+LIST_OF_NODES=$tempo
+
+
+#-----------------------------------------------------------
+# Create the $HOME/.netrc file
+
+mv $HOME/.netrc $HOME/.netrc.fnetperf >/dev/null 2>&1
+
+for i in $LIST_OF_NODES 
+do
+  echo machine $i >>$HOME/.netrc
+  echo login root >>$HOME/.netrc
+  echo password $PASSWORD >>$HOME/.netrc
+done
+ 
+chmod go-rwx $HOME/.netrc
+
+
+#-----------------------------------------------------------
+# Create the result directory
+
+echo
+echo Creation of the directory $REP_RESULT if needed
+mkdir $REP_RESULT 2>/dev/null
+
+
+#-----------------------------------------------------------
+# Main part
+
+echo "=======================================================" >> $FILE_RESULT
+echo "=== TESTS RUN FROM $LOCAL_NODE" >> $FILE_RESULT
+echo "===" >> $FILE_RESULT
+echo "=== TARGET NODES TESTED :" >> $FILE_RESULT
+echo "=== $LIST_OF_NODES" >> $FILE_RESULT
+echo "=======================================================" >> $FILE_RESULT
+echo  >> $FILE_RESULT
+
+
+for i in $LIST_OF_NODES
+do
+   echo "#####################################"
+   echo "#####################################" >> $FILE_RESULT
+
+   echo "## $i"
+   echo "## $i" >> $FILE_RESULT
+   echo  >> $FILE_RESULT
+
+   #if [ $j != $LOCAL_NODE ]
+   if [ $i != ${PREFIX}${LOCAL_NODE}${SUFFIX} ]
+   then
+      ftp >> $FILE_RESULT 2>> $FILE_RESULT <<**
+verbose
+open $i
+bin
+put "|dd if=/dev/zero bs=1m count=10000" /dev/null
+bye
+**
+
+   else # Local node skipped
+     echo Local Node $LOCAL_NODE skipped
+     echo Local Node $LOCAL_NODE skipped >> $FILE_RESULT
+
+   fi
+
+   echo >> $FILE_RESULT
+
+   grep -p## "Connected to $i" $FILE_RESULT | grep sent
+   echo 
+
+
+done
+
+#-----------------------------------------------------------
+# Restore the old $HOME/.netrc file
+
+rm $HOME/.netrc >/dev/null 2>&1
+mv $HOME/.netrc.fnetperf $HOME/.netrc >/dev/null 2>&1
+

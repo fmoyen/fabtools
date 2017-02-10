@@ -1,0 +1,167 @@
+#!/bin/ksh
+
+#set -x
+
+####################################################################
+# FabSync
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+#
+# Release : V14.01 - December, 5th 2014
+#    -> Linux Adaptation
+# Release : V10.01 - June, 25th 2010
+#    -> Bug fix
+# Release : V9.01 - September, 8th 2009
+#    -> Added the -tar option
+# Release : V1.3 - October, 16th 2007
+#    -> Added the -ver option
+# Release : V1.2 - August, 17th 2007
+#    -> Changed REP_RACINE by REP_TOOLS
+# Release : V1.1 March, 29th 2007
+#   -> added the suppression of the fabtools dir before untaring
+# Release : V1.0 March, 22nd 2007
+
+####################################################################
+# Just a little tool to sync the fabtools directory on all nodes
+# also generates the fabtools.tar file. 
+#
+
+####################################################################
+
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 8`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+#-----------------------------------------------------------
+# Analyse the parameters of the scripts
+
+PARAM=$*
+NBRE_PARAM=$#
+NBRE_OPTION=$NBRE_PARAM
+SCRIPT=$0
+
+#-----------------------------------------------------------
+# VARIABLES
+
+RELEASE=`cd $REP_SCRIPT/.. ; ls V*`
+TARNAME=fabtools_${RELEASE}_`date +%d%b%y_%H%M%S`.tar
+DO_TAR=NO
+
+
+#-----------------------------------------------------------
+# USAGE AND HELP FUNCTIONS
+
+function usage
+{
+   echo
+   echo "usage: $SCRIPT [-ver | -version] [-tar]"
+   echo
+   echo "        just run it. You'll find the tar file into $REP_TOOLS"
+   echo "        It will automatically update the fabtools on all your nodes"
+   echo
+   echo "        If you just want to generate the tar file (without syncing nodes), see -tar option"
+   echo
+   echo "        -ver|-version : to display the version of each module"
+   echo "        -tar          : generates the tar file without syncing to all the nodes"
+   echo "        -h To display this help !"
+   echo
+}
+
+#-----------------------------------------------------------
+# IF AT LEAST ONE PARAMETER IS GIVEN (ASSUMING -h or -tar ;-D )
+
+if [ $# -eq 1 ]
+then
+   param=$1
+   if [ $param == "-ver" ] || [ $param == "-version" ]
+   then
+     cd $REP_SCRIPT
+     echo 
+     echo "Global Release : $RELEASE"
+     echo "-------------------------"
+
+      for i in `grep -il release *`
+      do
+         echo $EchoParams "   $i : \c"
+         num=`echo $i | wc -c`
+         for j in `seq $num 25`
+         do
+            echo $EchoParams " \c"
+         done
+         grep -i release $i | sed -n 1p
+      done
+      exit 0
+
+   else
+      if [ $param == "-tar" ]
+      then
+         DO_TAR=YES
+      else
+         usage
+         exit 1
+      fi
+   fi
+fi
+
+if [ $# -ge 2 ]
+then
+  usage
+  exit 1
+fi
+
+
+#-----------------------------------------------------------
+# MAIN PART
+
+echo 
+echo "######################################"
+echo "Making the tar file $REP_TOOLS/$TARNAME"
+cd $REP_SCRIPT/../..
+tar cvf $REP_TOOLS/$TARNAME fabtools
+echo
+
+if [ $DO_TAR = "YES" ]
+then
+   echo 
+   echo "using -tar option"
+   echo "Exiting ..."
+   exit 0
+fi
+
+echo "######################################"
+echo "Suppressing the fabtools directory on all the distant nodes"
+
+for i in $DISTANT_NODES
+do
+  echo $EchoParams "suppressing fabtools on $i ... \c"
+  $RSH $i "cd $REP_SCRIPT/../.. ; rm -r fabtools"
+  echo "done"
+done
+echo
+
+echo "######################################"
+echo "spreading this new tar file on all the distant nodes"
+
+for i in $DISTANT_NODES
+do
+  echo "untaring $TARNAME onto $i ..."
+  $RSH $i "cd $REP_SCRIPT/../.. ; tar xvf  $REP_TOOLS/$TARNAME"
+  echo
+done
+echo
+
+echo bye.
+

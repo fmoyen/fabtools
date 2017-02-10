@@ -1,0 +1,366 @@
+#!/bin/ksh
+
+####################################################################
+# getconf
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+# Release : V11.01 - May 17th, 2011
+# Autonomous script that can be run outside the fabtools environment
+
+####################################################################
+# Get all the informations needed on a system for a report.
+
+####################################################################
+
+#-----------------------------------------------------------
+# USAGE
+
+function usage
+{
+   echo
+   echo "usage : $0 [ result directory ]"
+   echo
+   echo "        just run it. You'll find the result file into $REP_RESULT"
+   echo "          or"
+   echo "        Give the directory and you'll fint the result file into it"
+   echo 
+   echo "        -h To display this help !"
+   echo
+   exit 1
+
+}
+
+#-----------------------------------------------------------
+# VARIABLES
+
+REP_RESULT=/tmp
+
+case $# in
+   0)
+   REP_RESULT=/tmp
+   ;;
+
+   1)
+   if [ $1 == "-h" ]
+   then
+      usage
+   else
+      REP_RESULT=$1
+   fi
+   ;;
+
+   *)
+   usage
+   ;;
+
+esac
+
+FILE_RESULT="$REP_RESULT/`hostname`_`date +%d%b%y_%H%M%S`.txt"
+
+TEMPO_CRON=/tmp/get_all_the_crontabs
+TEMPO_LSVG=/tmp/get_all_the_VG_info
+TEMPO_ENT=/tmp/get_all_the_ent_info
+TEMPO_FCS=/tmp/get_all_the_fcs_info
+TEMPO_FSCSI=/tmp/get_all_the_fscsi_info
+TEMPO_VSCSI=/tmp/get_all_the_vscsi_info
+TEMPO_HDISK=/tmp/get_all_the_hdisk_info
+
+#-----------------------------------------------------------
+function todo 
+{
+echo -------------------------------------- >> $FILE_RESULT
+echo $* >> $FILE_RESULT
+echo $*
+echo -------------------------------------- >> $FILE_RESULT
+eval $* >> $FILE_RESULT 2>> $FILE_RESULT
+echo >> $FILE_RESULT
+}
+
+#-----------------------------------------------------------
+# Create the result directory
+echo
+echo Creation of the directory $REP_RESULT if needed
+mkdir -p $REP_RESULT 2>/dev/null
+
+echo Creation of the file $FILE_RESULT
+touch $FILE_RESULT
+echo
+
+#-----------------------------------------------------------
+# START COLLECTING THE INFORMATION
+
+AIXLEVEL=`oslevel -s | cut -c 1-2`
+
+echo START COLLECTING THE INFORMATIONS FOR `hostname`
+echo
+
+#-----------------------------------------------------------
+# START OF FILE
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo START OF FILE - START OF FILE - START OF FILE >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo >> $FILE_RESULT
+
+echo "for i in \`lsdev -Ccadapter | grep fcs | awk '{print \$1}'\`" > $TEMPO_FCS
+echo "do" >> $TEMPO_FCS
+echo "echo" >> $TEMPO_FCS
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FCS
+echo "echo fcstat \$i" >> $TEMPO_FCS
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FCS
+echo "echo" >> $TEMPO_FCS
+echo "fcstat \$i"  >> $TEMPO_FCS
+echo "echo" >> $TEMPO_FCS
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FCS
+echo "echo lsattr -El \$i" >> $TEMPO_FCS
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FCS
+echo "echo" >> $TEMPO_FCS
+echo "lsattr -El \$i"  >> $TEMPO_FCS
+echo "done" >> $TEMPO_FCS
+chmod 755 $TEMPO_FCS
+todo "$TEMPO_FCS"
+rm $TEMPO_FCS
+
+echo "for i in \`lsdev | grep fscsi | awk '{print \$1}'\`" > $TEMPO_FSCSI
+echo "do" >> $TEMPO_FSCSI
+echo "echo" >> $TEMPO_FSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FSCSI
+echo "echo lsattr -El \$i" >> $TEMPO_FSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FSCSI
+echo "echo" >> $TEMPO_FSCSI
+echo "lsattr -El \$i"  >> $TEMPO_FSCSI
+echo "echo" >> $TEMPO_FSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FSCSI
+echo "echo lscfg -vpl \$i" >> $TEMPO_FSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_FSCSI
+echo "echo" >> $TEMPO_FSCSI
+echo "lscfg -vpl \$i"  >> $TEMPO_FSCSI
+
+echo "done" >> $TEMPO_FSCSI
+chmod 755 $TEMPO_FSCSI
+todo "$TEMPO_FSCSI"
+rm $TEMPO_FSCSI
+
+echo "for i in \`lsdev | grep vscsi | awk '{print \$1}'\`" > $TEMPO_VSCSI
+echo "do" >> $TEMPO_VSCSI
+echo "echo" >> $TEMPO_VSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_VSCSI
+echo "echo lsattr -El \$i" >> $TEMPO_VSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_VSCSI
+echo "echo" >> $TEMPO_VSCSI
+echo "lsattr -El \$i"  >> $TEMPO_VSCSI
+echo "echo" >> $TEMPO_VSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_VSCSI
+echo "echo lscfg -vpl \$i" >> $TEMPO_VSCSI
+echo "echo - - - - - - - - - - - -" >> $TEMPO_VSCSI
+echo "echo" >> $TEMPO_VSCSI
+echo "lscfg -vpl \$i"  >> $TEMPO_VSCSI
+
+echo "done" >> $TEMPO_VSCSI
+chmod 755 $TEMPO_VSCSI
+todo "$TEMPO_VSCSI"
+rm $TEMPO_VSCSI
+
+echo "for i in \`lspv | awk '{print \$1}'\`" > $TEMPO_HDISK
+echo "do" >> $TEMPO_HDISK
+echo "echo" >> $TEMPO_HDISK
+echo "echo - - - - - - - - - - - -" >> $TEMPO_HDISK
+echo "echo lsattr -El \$i" >> $TEMPO_HDISK
+echo "echo - - - - - - - - - - - -" >> $TEMPO_HDISK
+echo "echo" >> $TEMPO_HDISK
+echo "lsattr -El \$i"  >> $TEMPO_HDISK
+echo "echo" >> $TEMPO_HDISK
+echo "echo - - - - - - - - - - - -" >> $TEMPO_HDISK
+echo "echo lscfg  -vpl \$i" >> $TEMPO_HDISK
+echo "echo - - - - - - - - - - - -" >> $TEMPO_HDISK
+echo "echo" >> $TEMPO_HDISK
+echo "lscfg -vpl \$i"  >> $TEMPO_HDISK
+
+echo "done" >> $TEMPO_HDISK
+chmod 755 $TEMPO_HDISK
+todo "$TEMPO_HDISK"
+rm $TEMPO_HDISK
+
+todo "uname -a"
+todo "lsattr -El sys0"
+todo "prtconf"
+todo "oslevel -s"
+todo "instfix -i | egrep 'ML|SP'"
+todo "instfix -i | grep ML"
+todo "instfix -i | grep SP"
+todo "instfix -i"
+todo "emgr -l"
+todo "lparstat -i"
+todo "lsdev -C | grep -i processor | grep -i available | wc -l"
+todo "lsattr -El mem0"
+todo "vmstat -v"
+todo "svmon -G"
+todo "lsdev -C -S a"
+todo "lsslot -c slot"
+todo "lsslot -c pci"
+todo "lsdev -Cc adapter -s pseudo -t ibm_ech"
+todo "ls -la /dev"
+todo "lsps -a"
+todo "ulimit -a"
+todo "cat /etc/security/limits"
+
+if [ $AIXLEVEL != "53" ]
+then
+   todo "schedo -FL"
+   todo "vmo -FL"
+   todo "no -FL"
+   todo "ioo -FL"
+   todo "nfso -FL"
+   todo "schedo -Fa"
+   todo "vmo -Fa"
+   todo "no -Fa"
+   todo "ioo -Fa"
+   todo "nfso -Fa"
+else
+   todo "schedo -L"
+   todo "vmo -L"
+   todo "no -L"
+   todo "ioo -L"
+   todo "nfso -L"
+   todo "schedo -a"
+   todo "vmo -a"
+   todo "no -a"
+   todo "ioo -a"
+   todo "nfso -a"
+fi
+
+todo "ifconfig -a"
+todo "netstat -rn"
+todo "netstat -i"
+
+echo "for i in \`netstat -i | awk '{print \$1}' | grep en | sort -u\`" > $TEMPO_ENT
+echo "do" >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+echo "echo - - - - - - - - - - - -" >> $TEMPO_ENT
+echo "echo entstat -d \$i" >> $TEMPO_ENT
+echo "echo - - - - - - - - - - - -" >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+echo "entstat -d \$i"  >> $TEMPO_ENT
+echo "done" >> $TEMPO_ENT
+chmod 755 $TEMPO_ENT
+todo "$TEMPO_ENT"
+rm $TEMPO_ENT
+
+echo "for i in \`lsdev -Ccadapter | grep ent | awk '{print \$1}'\`" > $TEMPO_ENT
+echo "do" >> $TEMPO_ENT
+echo "ENadapt=\`echo \$i | cut -c 1-2,4-\`" >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+echo "echo - - - - - - - - - - - -" >> $TEMPO_ENT
+echo "echo lsattr -El \$i" >> $TEMPO_ENT
+echo "echo - - - - - - - - - - - -" >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+echo "lsattr -El \$i"  >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+echo "echo - - - - - - - - - - - -" >> $TEMPO_ENT
+echo "echo lsattr -El \$ENadapt" >> $TEMPO_ENT
+echo "echo - - - - - - - - - - - -" >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+echo "lsattr -El \$ENadapt"  >> $TEMPO_ENT
+echo "echo" >> $TEMPO_ENT
+
+echo "done" >> $TEMPO_ENT
+chmod 755 $TEMPO_ENT
+todo "$TEMPO_ENT"
+rm $TEMPO_ENT
+
+todo "lspv"
+todo "$REP_SCRIPT/lsluns"
+todo "pcmpath query adapter"
+todo "pcmpath query device"
+todo "pcmpath query essmap"
+todo "lspath"
+todo "lsvg -o"
+todo "manage_disk_drivers"
+todo "fget_config -Av"
+todo "mpio_get_config -A"
+
+echo "for i in \`lsvg -o\`" > $TEMPO_LSVG
+echo "do" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "echo - - - - - - - - - - - -" >> $TEMPO_LSVG
+echo "echo \$i" >> $TEMPO_LSVG
+echo "echo - - - - - - - - - - - -" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "echo lsvg" >> $TEMPO_LSVG
+echo "lsvg \$i" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "echo lsvg -l" >> $TEMPO_LSVG
+echo "lsvg -l \$i" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "echo lsvg -p" >> $TEMPO_LSVG
+echo "lsvg -p \$i" >> $TEMPO_LSVG
+echo "for j in \`lsvg -l \$i |  awk 'NR>2 {print \$1}' \`" >> $TEMPO_LSVG
+echo "do" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "echo lslv \$j" >> $TEMPO_LSVG
+echo "lslv \$j" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "echo lslv -l \$j" >> $TEMPO_LSVG
+echo "lslv -l \$j" >> $TEMPO_LSVG
+echo "echo" >> $TEMPO_LSVG
+echo "done" >> $TEMPO_LSVG
+echo "done" >> $TEMPO_LSVG
+chmod 755 $TEMPO_LSVG
+todo "$TEMPO_LSVG"
+rm $TEMPO_LSVG
+
+todo "df -kP"
+todo "df -gP"
+todo "mount"
+todo "lsfs -q"
+todo "cat /etc/filesystems"
+todo "cat /etc/resolv.conf"
+todo "cat /etc/netsvc.conf"
+todo "cat /etc/exports"
+todo "exportfs"
+todo "lslpp -l"
+todo "lssrc -a"
+todo "ps -ef"
+todo "cat /etc/inittab"
+todo "cat /etc/hosts"
+todo "cat /etc/tunables/lastboot"
+todo "ls /usr/spool/cron/crontabs"
+
+echo "for i in \`ls /usr/spool/cron/crontabs\`" > $TEMPO_CRON
+echo "do" >> $TEMPO_CRON
+echo "echo" >> $TEMPO_CRON
+echo "echo - - - - - - - - - - - -" >> $TEMPO_CRON
+echo "echo \$i" >> $TEMPO_CRON
+echo "echo - - - - - - - - - - - -" >> $TEMPO_CRON
+echo "cat /usr/spool/cron/crontabs/\$i" >> $TEMPO_CRON
+echo "done" >> $TEMPO_CRON
+chmod 755 $TEMPO_CRON
+todo "$TEMPO_CRON"
+rm $TEMPO_CRON
+
+
+#-----------------------------------------------------------
+# END OF FILE
+echo >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo END OF FILE - END OF FILE - END OF FILE >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+
+
+#-----------------------------------------------------------
+# Reminder of the directory name
+
+echo --------------------------------------
+echo "Remind you the RESULT directory/file name"
+echo $FILE_RESULT
+echo

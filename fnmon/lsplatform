@@ -1,0 +1,86 @@
+#!/bin/ksh
+
+####################################################################
+# lsplatform
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V11.01 - November, 11th 2011
+#  -> First release
+
+####################################################################
+# lsplatform: Display and inform of platform type for all NODES
+#
+####################################################################
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 12`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+REP_RESULT="$REP_RACINE/fnmon/$REP_PARAM"
+
+#-----------------------------------------------------------
+# USAGE
+
+SCRIPT=$0
+
+function usage
+{
+  echo
+  echo "usage : $SCRIPT"
+  echo "        [-h]   -> displays this help" 
+  echo "        [-l]   -> displays on screen the platform type for all NODES without logging it on file"
+  echo 
+  echo "        without any parameter, log the platform type for all NODES"
+  echo "        ($NODES)"
+
+  echo
+}
+
+#-----------------------------------------------------------
+# TEST CASE
+
+if [ $# -gt 1 ]
+then
+  usage
+  exit 1
+fi
+
+if [ $# -eq 1 ]
+then
+  case $1 in
+   -h)
+     usage
+     exit 0
+   ;;
+
+   -l)
+     $REP_SCRIPT/doit uname 
+     echo
+     exit 0
+   ;;
+
+   *)
+     usage
+     exit 1
+   ;;
+  esac
+fi
+
+
+#-----------------------------------------------------------
+# Main Part
+
+$REP_SCRIPT/doit -s uname > $PLATFORM_FILE

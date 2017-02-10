@@ -1,0 +1,20 @@
+#!/bin/ksh
+
+##################################################
+# name: Svncserver
+# purpose: script that will start or stop the vncserver daemon.
+##################################################
+
+PORT=":1"
+
+case "$1" in
+start )
+	/usr/local/bin/vncserver $PORT
+	;;
+stop )
+	vncserver -kill $PORT 
+	;;
+* )
+	echo "Usage: $0 (start | stop)"
+	exit 1
+esac

@@ -1,0 +1,41 @@
+#!/bin/ksh
+
+# This script needs to be run on system A after a flashcopy creation (mkflash command)
+# When your destination is system B and the flashcopy source is system A
+
+next_step ()  {
+echo
+echo TYPE ENTER FOR NEXT STEP
+echo
+read NEXT
+}
+
+clear
+
+# Inform what is going to bo done
+echo
+echo ==============================================
+echo WHAT IS GOING TO BE DONE : 
+echo ==============================================
+echo "  1) varyonvg of the volumes"
+echo   END
+
+next_step
+
+# Varyonvg
+echo
+echo ==============================================
+echo DOING THE VARYONVG OF THE VOLUME GROUPS
+echo ==============================================
+varyonvg_FC.sh
+
+next_step
+
+echo
+echo ==============================================
+echo THE SYSTEM IS NOW READY AT THE AIX LEVEL
+echo YOU HAVE TO RESTART ORACLE
+echo ==============================================
+echo
+echo END OF SCRIPT
+echo

@@ -1,0 +1,62 @@
+#!/bin/ksh
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+#
+# nim_savevg
+# Create savevg resources with a NIM server
+# Needs a file containing the VGs for each Machine 
+
+# Release : V1.0 -  October, 4th 2008
+#  -> Use of the NIM_DIR directory
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 13`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+
+. $REP_SCRIPT/fabtools.conf
+
+altinst()
+{
+  INSTP_FLAGS=
+  DEBUG=
+  SET_BOOTLIST=
+  VERBOSE=
+  REBOOT=
+  while getopts z:i:s:R:DBVrb:l:w:f:F:e:P: option
+  do
+     case $option in
+        z) INSTP_FLAGS=$INSTP_FLAGS$OPTARG;;
+        i) IMAGE_DATA=$OPTARG;;
+        s) SCRIPT=$OPTARG;;
+        R) RESOLV_CONF=$OPTARG;;
+        D) DEBUG=yes;;
+        B) SET_BOOTLIST=no;;
+        V) VERBOSE=yes;;
+        r) REBOOT=yes;;
+        b) BUNDLE=$OPTARG;;
+        l) IMAGE_LOC=$OPTARG;;
+        w) FILESETS=$OPTARG;;
+        F) FIXES=$OPTARG;;
+        f) FIX_BUNDLE=$OPTARG;;
+        e) EXCLUDE_LIST=$OPTARG;;
+        P) PHASE=$OPTARG;;
+     esac
+  done
+  shift $(($OPTIND - 1))
+  TARGET_DISK=$*
+  [[ -n ${INSTP_FLAGS} ]] &&  INSTP_FLAGS=a${INSTP_FLAGS}
+  echo /usr/sbin/alt_disk_install -C ${IMAGE_LOC:+-I $INSTP_FLAGS} ${IMAGE_DATA:+-i $IMAGE_DATA} ${PHASE:+-P $PHASE} ${SCRIPT:+-s $SCRIPT} ${RESOLV_CONF:+-R $RESOLV_CONF} ${DEBUG:+-D} ${SET_BOOTLIST:+-B} ${VERBOSE:+-V} ${REBOOT:+-r} ${BUNDLE:+-b $BUNDLE} ${IMAGE_LOC:+-l $IMAGE_LOC} ${FILESETS:+-w "${FILESETS}"} ${FIXES:+-F "${FIXES}"} ${FIX_BUNDLE:+-f $FIX_BUNDLE} ${EXCLUDE_LIST:+-e $EXCLUDE_LIST} ${TARGET_DISK} 
+}
+
+altinst  -P'all' -z 'c' -z 'N' -z 'g' -z 'X' -z '' -z '' -z 'Y' '-B'    hdisk1

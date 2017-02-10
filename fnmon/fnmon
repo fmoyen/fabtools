@@ -1,0 +1,801 @@
+#!/bin/ksh
+
+####################################################################
+# Fast Nmon (fnmon)
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V14.1 -  January, 24th 2014
+#  -> change grep $i $PLATFORM_FILE by grep -w $i $PLATFORM_FILE 
+#     in order to prevent multiple AIX if looking for sapas1 when exist sapas1, sapas10, sapas11, etc
+# Release : V13.3 -  April, 26th 2013
+#  -> Added the SAMPLE_SCRIPT (if USE_SCRIPT=1 and SAMPLE_SCRIPT exists, run the script SAMPLE_SCRIPT every SECOND_SAMPLE_SCRIPT)
+#  -> Added the test to see if PRE/POST/SAMPLE SCRIPTS are empty or not (as USE_SCRIPT is used for the 3 SCRIPTS)
+#     So this allow to have a POST_SCRIPT without PRE/SAMPLE SCRIPTS for example
+# Release : V13.2 -  April, 24th 2013
+#  -> replace the usage of "seq" in a for by a while (for system without seq command)
+# Release : V13.1 -  April, 23rd 2013
+#  -> change the header RUN_ by RUN__ (to prevent problem when the runname (-r) is something like "RUN_DE_REF"
+# Release : V11.2 -  November, 9th 2011
+#  -> change ADD_SCRIPT to PRE_SCRIPT
+# Release : V11.1 -  November, 8th 2011
+#  -> Linux support
+# Release : V10.2 -  August, 12th 2010
+#  -> Bug correction for FILEMON (usage of FREQ_TPROF instead of FREQ_FILEMON
+# Release : V10.1 -  February, 3rd 2010
+#  -> bug correction (mkdir of runid directory to allow the creation of run_id file the very first time
+# Release : V9.04 -  November, 26th 2009
+#  -> daily nmon: added the `date %d%mÂ%y` directory for results
+# Release : V9.03 -  September, 22nd 2009
+#  -> added the -nodes option
+# Release : V9.02 -  May, 19th 2009
+#  -> Add the usage of $NMON_NODES (option -/+nmonnode).
+# Release : V9.01 -  March, 10th 2009
+#  -> Usage of a generic RUN ID.
+#     A daily fnmon does not increment this RUN ID.
+# Release : V2.14 -  November, 17th 2008
+#  -> The DIR results is now 111708 instead of 17Nov08 (ls give the dirs in order)
+# Release : V2.13 -  October, 17th 2008
+#  -> changes done so the title of some graphs (CPU_ALL) will include the node name
+# Release : V2.12 -  October, 3rd 2008
+#  -> Added the possibility for fnmon to start an additional script (USE_SCRIPT)
+#  -> Added : -script / +script options (deactivate / activate the use of ADD_SCRIPT)
+# Release : V2.11 -  October, 1st 2008
+#  -> Added : -getinfo / +getinfo options (deactivate / activate the option)
+# Release : V2.10 -  May, 21st 2008
+#  -> moved the ARG_NMON initialization into the fabtools.conf file
+# Release : V2.9 -  April, 23rd 2008
+#  -> Added the DAILY directory for daily fnmon
+# Release : V2.8 -  March, 25th 2008
+#  -> Deleted a redundancy explanation into the help function
+#  -> Added : -vmstat / +vmstat options (deactivate / activate the option)
+#  -> Added : -sample / +sample options (deactivate / activate the option)
+#  -> Added : -tprof / +tprof options (deactivate / activate the option)
+#  -> Added : -filemon / +filemon options (deactivate / activate the option)
+# Release : V2.7 -  March, 20th 2008
+#  -> Adding the daily info into the Informations.txt file
+# Release : V2.6 -  March, 19th 2008
+#  -> Adding the vmstat and netstat possibilities
+#  -> Adding the -daily option
+# Release : V2.5 -  March, 13th 2008
+#  -> Adding the -P nmon option (Paging stats)
+# Release : V2.4 -  March, 12th 2008
+#  -> Adding the -d nmon option (disk response time and wait time)
+# Release : V2.3 -  October, 16th 2007
+#  -> Adding the possibility to not give a count ("-c")
+# Release : V2.02 -  June, 28nd 2007
+#  -> Adding the filemon option
+# Release : V2.01 -  March, 22nd 2007
+#  -> Adding the nmon parameter
+#        -D : Skip disk configuration sections
+#        -V : Include disk Volume Group section
+#        -A : Include Async I/O Section
+# Release : V2.00 -  December, 13th 2006
+#  -> reorganisation of the parameters using -s, -c, -r etc.
+# Release : V1.10 -  November, 22nd 2006
+
+####################################################################
+# Start of batch nmon processes on all the serveurs (MAIN Results)
+#
+# Start of batch nmon processes on all the serveurs (SAMPLE Results):
+#   at 1/3 of the total time
+#   at 2/3 of the total time
+# with more accuracy
+
+####################################################################
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 7`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+
+LIST_NODES=$NMON_NODES  #Use the NMON_NODES by default
+
+#-----------------------------------------------------------
+# Analyse the parameters of the scripts
+
+PARAM=$*
+NBRE_PARAM=$#
+NBRE_OPTION=$NBRE_PARAM
+SCRIPT=$0
+RUN_ID=$REP_RACINE/fnmon/runid
+
+OKs=0
+OKc=0
+OKr=0
+OKn=0
+NOVI=0
+DAILY=0
+
+
+function usage
+{
+   echo
+   echo "usage: $SCRIPT"
+   echo "        -s <seconds> [-c <count>] -r <runname>"
+   echo "        [-h] [-novi]"
+   echo "        [-t] [-T]"
+   echo "        [-daily]"
+   echo "        [-nodes <node1,node2,node3...>]"
+   echo "        [-vmstat | +vmstat]"
+   echo "        [-sample | +sample]"
+   echo "        [-tprof | +tprof]"
+   echo "        [-filemon | +filemon]"
+   echo "        [-getinfo | +getinfo]"
+   echo "        [-script | +script]"
+   echo
+   echo "type fnmon -h for complete informations."
+   echo
+}
+
+function help
+{
+   usage
+   echo "-s <seconds>  Number of seconds between snap shots"
+   echo "[-c <count>]  Number of snapshots (over 700 could cause problem to analyse by excel"
+   echo "              Optionnal. No -c means -c 10000"
+   echo "-r <runname>  Name of the run (used in the result directory, the nmon report, etc.)"
+   echo
+   echo "For example, $SCRIPT -r test -s 30 -c 120 means:"
+   echo "    the name of the run is test"
+   echo "    we're taking a snap shot every 30 seconds (half a minute)"
+   echo "    we're taking 120 snap shots"
+   echo "  => the duration of the collection will be 120*30=3600s, so one hour"
+   echo
+   echo "-novi         When using fnmon in a script / batch."
+   echo "              Prevent to vi the informations.txt file when starting."
+   echo
+   echo "-t            include top processes in the nmon output"
+   echo "-T            as -t plus saves command line arguments in UARG section"
+   echo
+   echo "Take care, the -t and -T option can generate very big nmon output files"
+   echo "and consume cpu resources." 
+   echo
+   echo "-daily        for daily fnmon (means it will not start sample nmon, vmstat, tprof nor filemon)"
+   echo "              (equivalent to:  -vmstat -sample -tprof -filemon)"
+   echo
+   echo " [-nodes <node1,node2,node3...>]"
+   echo "              To start nmon only on the listed nodes"
+   echo
+   echo "-vmstat       Prevent the fnmon to run a vmstat, even if the fabtools.conf file says to."
+   echo "+vmstat       Force the fnmon to run a vmstat, even if the fabtools.conf file says not to."
+   echo
+   echo "-sample       Prevent the fnmon to run 2 sample nmons, even if the fabtools.conf file says to."
+   echo "+sample       Force the fnmon to run 2 sample nmons, even if the fabtools.conf file says not to."
+   echo
+   echo "-tprof        Prevent the fnmon to run some tprof, even if the fabtools.conf file says to."
+   echo "+tprof        Force the fnmon to run some tprof, even if the fabtools.conf file says not to."
+   echo
+   echo "-filemon      Prevent the fnmon to run some filemon, even if the fabtools.conf file says to."
+   echo "+filemon      Force the fnmon to run some filemon, even if the fabtools.conf file says not to."
+   echo 
+   echo "-getinfo      Prevent the fnmon to run getinfo before starting, even if the fabtools.conf file says to."
+   echo "+getinfo      Force the fnmon to run getinfo before starting, even if the fabtools.conf file says not to."
+   echo
+   echo "-script       Prevent the fnmon to start an additional script (PRE_SCRIPT into the fabtools.conf file)"
+   echo "+script       Force the fnmon to start an additional script (PRE_SCRIPT into the fabtools.conf file)"
+   echo
+   echo "-nmonnode     Prevent the fnmon to use the $NMON_NODES list (use the $NODES list instead, cf the config file)"
+   echo "+nmonnode     Force the fnmon to use the $NODES list (instead of the $NMON_NODES list, cf the config file)"
+   echo
+   echo "other parameters are available into the fabtools.conf file."
+   echo
+}
+
+
+COUNT=1
+while [ $COUNT -le $NBRE_OPTION ]
+do
+   case $1 in
+   -h)
+      help
+      exit 0
+   ;;
+
+   -s)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" ]
+      then
+         usage
+         exit 1
+      fi
+
+      OPTION[$COUNT]="$1 $2"
+      ARG_NMON="$ARG_NMON $1 $2"
+      ARG_NMON_LINUX="$ARG_NMON_LINUX $1 $2"
+      NSECOND=$2
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKs=1
+   ;;
+
+   -c)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" ]
+      then
+         usage
+         exit 1
+      fi
+
+      OPTION[$COUNT]="$1 $2"
+      ARG_NMON="$ARG_NMON $1 $2"
+      ARG_NMON_LINUX="$ARG_NMON_LINUX $1 $2"
+      NCOUNT=$2
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKc=1
+   ;;
+
+   -r)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" ]
+      then
+         usage
+         exit 1
+      fi
+
+      OPTION[$COUNT]="$1 $2"
+      #ARG_NMON="$ARG_NMON $1 $2"
+      RUN=$2
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKr=1
+   ;;
+
+   -novi)
+      OPTION[$COUNT]=$1
+      NOVI=1
+   ;;
+
+   -t|-T)
+      OPTION[$COUNT]=$1
+      ARG_NMON="$ARG_NMON $1"
+      ARG_NMON_LINUX="$ARG_NMON_LINUX $1"
+   ;;
+
+   -daily)
+      OPTION[$COUNT]=$1
+      DAILY=1
+      USE_SAMPLE=0
+      USE_TPROF=0
+      USE_FILEMON=0
+      USE_VMSTAT=0
+      USE_NETSTAT=0
+   ;;
+
+   -nodes)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" -o OKn -eq 1 ]
+      then
+         usage
+         exit 1
+      fi
+
+      LIST_NODES=`echo $2 | sed "s/,/ /g"`
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKn=1
+   ;;
+
+   -vmstat)
+      OPTION[$COUNT]=$1
+      USE_VMSTAT=0
+   ;;
+
+   +vmstat)
+      OPTION[$COUNT]=$1
+      USE_VMSTAT=1
+   ;;
+
+   -sample)
+      OPTION[$COUNT]=$1
+      USE_SAMPLE=0
+   ;;
+
+   +sample)
+      OPTION[$COUNT]=$1
+      USE_SAMPLE=1
+   ;;
+
+   -tprof)
+      OPTION[$COUNT]=$1
+      USE_TPROF=0
+   ;;
+
+   +tprof)
+      OPTION[$COUNT]=$1
+      USE_TPROF=1
+   ;;
+
+   -filemon)
+      OPTION[$COUNT]=$1
+      USE_FILEMON=0
+   ;;
+
+   +filemon)
+      OPTION[$COUNT]=$1
+      USE_FILEMON=1
+   ;;
+
+   -getinfo)
+      OPTION[$COUNT]=$1
+      USE_GETINFO=0
+   ;;
+
+   +getinfo)
+      OPTION[$COUNT]=$1
+      USE_GETINFO=1
+   ;;
+
+   -script)
+      OPTION[$COUNT]=$1
+      USE_SCRIPT=0
+   ;;
+
+   +script)
+      OPTION[$COUNT]=$1
+      USE_SCRIPT=1
+   ;;
+
+   -nmonnode)
+      OPTION[$COUNT]=$1
+      LIST_NODES=$NODES
+   ;;
+
+   +nmonnode)
+      OPTION[$COUNT]=$1
+      LIST_NODES=$NMON_NODES
+   ;;
+
+   *)
+      usage
+      exit 1
+   ;;
+   esac
+
+   COUNT=`expr $COUNT + 1`
+   shift 1
+done
+
+# if -c is missing, then -c 10000
+if [ $OKc -eq 0 ]
+then
+   ARG_NMON="$ARG_NMON -c 10000"
+   ARG_NMON_LINUX="$ARG_NMON_LINUX -c 10000"
+   NCOUNT=10000
+fi
+
+# If it's missing one of the parameters -s or -r
+if [ $OKs -eq 0 -o $OKr -eq 0 ]
+then
+   usage
+   exit 1
+fi
+
+
+#-----------------------------------------------------------
+# VARIABLES
+
+if [ $DAILY -eq 0 ]
+then
+  if [ -f $RUN_ID ]
+  then
+    comptrun=`cat $RUN_ID`
+    comptrun=`expr $comptrun + 1`
+    echo $comptrun > $RUN_ID
+  else
+    comptrun=1
+    mkdir -p $REP_RACINE/fnmon
+    echo $comptrun > $RUN_ID
+  fi
+
+  nbr=`echo $comptrun | wc -m`
+  nbr=`expr $nbr - 1`
+
+  zero=`expr 4 - $nbr`
+
+  chainerun=""
+  while [ $zero -ge 1 ]
+  do
+    chainerun="0$chainerun"
+    zero=`expr $zero - 1`
+  done
+  chainerun="${chainerun}$comptrun"
+
+  REP_PARAM="RUN__R${chainerun}_`date +%m%d%y_%H%M%S`_${RUN}"
+  REP_RESULT="$REP_RACINE/fnmon/$REP_PARAM"
+
+else
+  REP_PARAM="RUN__`date +%m%d%y_%H%M%S`_${RUN}"
+  REP_RESULT="$REP_RACINE/fnmon/DAILY/`date +%m%d%y`/$REP_PARAM"
+fi
+
+REP_SAMPLE="$REP_RESULT/sample"
+REP_SAMPLE_AT="$REP_SAMPLE/at"
+
+REP_TPROF="$REP_RESULT/tprof"
+REP_TPROF_AT="$REP_TPROF/at"
+
+REP_FILEMON="$REP_RESULT/filemon"
+REP_FILEMON_AT="$REP_FILEMON/at"
+SHIFT_FILEMON_AT=5          # in minutes
+
+REP_VMSTAT="$REP_RESULT/vmstat"
+REP_VMSTAT_AT="$REP_VMSTAT/at"
+
+REP_NETSTAT="$REP_RESULT/netstat"
+REP_NETSTAT_AT="$REP_NETSTAT/at"
+
+REP_GETINFO="$REP_RESULT/getinfo"
+
+REP_PREPOSTSAMPLE_SCRIPT="$REP_RESULT/scripts"
+
+
+INFO=Informations.txt
+
+#-----------------------------------------------------------
+# Create the lsplatform file if needed
+
+  $REP_SCRIPT/lsplatform
+
+#-----------------------------------------------------------
+# Create the results directory
+
+echo --------------------------------------
+echo Creation of the directory $REP_RESULT
+mkdir -p $REP_RESULT
+
+if [ $USE_SAMPLE -eq 1 ]
+then
+  mkdir $REP_SAMPLE_AT
+  mkdir $REP_SAMPLE
+fi 
+
+if [ $USE_TPROF -eq 1 ]
+then
+  mkdir $REP_TPROF
+  mkdir $REP_TPROF_AT
+fi 
+
+if [ $USE_FILEMON -eq 1 ]
+then
+  mkdir $REP_FILEMON
+  mkdir $REP_FILEMON_AT
+fi 
+
+if [ $USE_GETINFO -eq 1 ]
+then
+  mkdir $REP_GETINFO
+fi 
+
+if [ $USE_VMSTAT -eq 1 ]
+then
+  mkdir $REP_VMSTAT
+  mkdir $REP_VMSTAT_AT
+  ln -s /usr/bin/vmstat $REP_VMSTAT_AT/vmstat # goal : to be able to find back the PID of the command if we need to kill it
+fi 
+
+if [ $USE_NETSTAT -eq 1 ]
+then
+  mkdir $REP_NETSTAT
+  mkdir $REP_NETSTAT_AT
+  ln -s /usr/bin/netstat $REP_NETSTAT_AT/netstat # goal : to be able to find back the PID of the command if we need to kill it
+fi 
+
+if [ $USE_SCRIPT -eq 1 ]
+then
+  mkdir $REP_PREPOSTSAMPLE_SCRIPT
+fi
+
+echo
+
+#-----------------------------------------------------------
+# Ask for specific informations to include in the $INFO file
+echo "#########################################" >> $REP_RESULT/$INFO
+echo "RUN : $REP_RESULT" >> $REP_RESULT/$INFO
+echo "#########################################" >> $REP_RESULT/$INFO
+echo  >> $REP_RESULT/$INFO
+
+if [ $NOVI -eq 0 ]
+then
+  vi $REP_RESULT/$INFO
+fi
+
+if [ $DAILY -eq 1 ]
+then
+echo  >> $REP_RESULT/$INFO
+echo "DAILY FNMON (GENERALLY AUTOMATICALLY STARTED BY CRONTAB)"  >> $REP_RESULT/$INFO
+echo "STARTED FROM SYSTEM `hostname`"   >> $REP_RESULT/$INFO
+fi
+
+#-----------------------------------------------------------
+# START OF THE MAIN NMON ON ALL NODES
+
+for i in $LIST_NODES
+do 
+  platform=`grep -w $i $PLATFORM_FILE | awk -F: '{print $2}'`
+  case $platform in
+
+  AIX)
+    arguments=$ARG_NMON
+  ;;
+
+  Linux)
+    arguments=$ARG_NMON_LINUX
+  ;;
+
+esac
+
+  echo --------------------------------------
+  echo Start on node $i the command $CMD_NMON with:
+  echo run_name=$RUN second=$NSECOND count=$NCOUNT options=$arguments
+   $RSH ${i} "$CMD_NMON -r ${i}_$RUN -F $REP_RESULT/${i}-`date +%d%b%y_%H%M%S`_MAIN.nmon $arguments"
+done
+
+#-----------------------------------------------------------
+# START OF THE ADDITIONAL SCRIPT IF ONE EXISTS
+
+if [ $USE_SCRIPT -eq 1 ]
+then
+  if [ `echo $PRE_SCRIPT | wc -c` -ne 1 ]
+  then
+    if [ $ONCE_EACH == "ONCE" ]
+    then 
+      echo
+      echo "###################################################"
+      echo Starting $PRE_SCRIPT onto node $SCRIPT_NODE
+      echo "###################################################"
+      echo
+      cmd="$RSH $SCRIPT_NODE $PRE_SCRIPT"
+      eval $cmd &
+
+    else
+      echo
+      echo "###################################################"
+      echo Starting $PRE_SCRIPT onto every nodes
+      echo "###################################################"
+      echo
+      for i in $LIST_NODES
+      do
+        echo --------------------------------------
+        echo Start on node $i the command 
+        cmd="$RSH ${i} $PRE_SCRIPT"
+        eval $cmd &
+      done
+    fi
+  fi
+
+  if [ `echo $SAMPLE_SCRIPT | wc -c` -ne 1 ]
+  then
+    # Calculating the number of time to execute the SAMPLE_SCRIPT
+    FULLTIER=`expr $NSECOND \* $NCOUNT`
+    COUNTIER=`expr $FULLTIER / $SECOND_SAMPLE_SCRIPT`
+
+    # Building the script to execute accordingly
+    echo ". $REP_SCRIPT/fabtools.conf" > $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh
+    echo "export REP_PREPOSTSAMPLE_SCRIPT=\"$REP_PREPOSTSAMPLE_SCRIPT\"" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh
+    echo "hostname > \$REP_PREPOSTSAMPLE_SCRIPT/sample_script_output_\`hostname\`.txt" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh
+    echo "COUNT=$COUNTIER" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh
+    echo "while [ \$COUNT -ne 0 ]" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh 
+    echo "do" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh 
+    echo "  ($SAMPLE_SCRIPT) >> \$REP_PREPOSTSAMPLE_SCRIPT/sample_script_output_\`hostname\`.txt" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh 
+    echo "  sleep $SECOND_SAMPLE_SCRIPT" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh 
+    echo "  COUNT=\`expr \$COUNT - 1\`" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh
+    echo "done" >> $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh 
+
+    chmod o+x $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh
+
+
+
+    if [ $ONCE_EACH == "ONCE" ]
+    then
+      echo
+      echo "###################################################"
+      echo Starting $SAMPLE_SCRIPT onto node $SCRIPT_NODE every $SECOND_SAMPLE_SCRIPT seconds
+      echo "###################################################"
+      echo
+      cmd="$RSH $SCRIPT_NODE $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh"
+      eval $cmd &
+
+    else
+      echo
+      echo "###################################################"
+      echo Starting $SAMPLE_SCRIPT onto every nodes and every $SECOND_SAMPLE_SCRIPT seconds
+      echo "###################################################"
+      echo
+      for i in $LIST_NODES
+      do
+        echo --------------------------------------
+        echo Start on node $i the command
+        cmd="$RSH ${i} $REP_PREPOSTSAMPLE_SCRIPT/sample_script.sh"
+        eval $cmd &
+      done
+    fi
+  fi
+
+fi
+
+#-----------------------------------------------------------
+# START OF THE SAMPLE NMON ON ALL NODES
+
+if [ $USE_SAMPLE -eq 1 ]
+then
+  FULLTIER=`expr $NSECOND \* $NCOUNT`
+  FULLTIER=`expr $FULLTIER / 60`
+  FIRSTTIER=`expr $FULLTIER / 3`
+  SECONDTIER=`expr $FIRSTTIER \* 2`
+
+  echo $CMD_NMON $ARG_SAMPLE -s $SECOND_SAMPLE -c $COUNT_SAMPLE -r $RUN -F $REP_SAMPLE/'`hostname`-`date +%d%b%y_%H%M%S`'_SAMPLE.nmon > $REP_SAMPLE_AT/command_for_at.sh
+  chmod 755  $REP_SAMPLE_AT/command_for_at.sh
+
+
+  for i in $LIST_NODES
+  do 
+    echo --------------------------------------
+    echo Start on node $i the command $CMD_NMON with:
+    echo run_name=$RUN second=$SECOND_SAMPLE count=$COUNT_SAMPLE
+    echo    at now + $FIRSTTIER minutes
+    $RSH ${i} "at -f $REP_SAMPLE_AT/command_for_at.sh now + $FIRSTTIER minutes" 2>> $REP_SAMPLE_AT/${i}_at_jobs.txt
+    echo    at now + $SECONDTIER minutes
+    $RSH ${i} "at -f $REP_SAMPLE_AT/command_for_at.sh now + $SECONDTIER minutes" 2>> $REP_SAMPLE_AT/${i}_at_jobs.txt
+    cat $REP_SAMPLE_AT/${i}_at_jobs.txt
+  done
+fi
+
+
+#-----------------------------------------------------------
+# START OF TPROF ON ALL NODES
+
+if [ $USE_TPROF -eq 1 ]
+then
+  FULLTIER=`expr $NSECOND \* $NCOUNT`
+  FULLTIER=`expr $FULLTIER / 60`
+  INCREMENT=`expr $FULLTIER / $FREQ_TPROF`
+
+  echo cd $REP_TPROF > $REP_TPROF_AT/command_for_at.sh
+  echo /usr/bin/tprof -skeuj -x sleep 30 >> $REP_TPROF_AT/command_for_at.sh
+  echo mv sleep.prof $REP_TPROF/'`hostname`-`date +%d%b%y_%H%M%S`'_TPROF.prof  >> $REP_TPROF_AT/command_for_at.sh
+
+  chmod 755  $REP_TPROF_AT/command_for_at.sh
+
+  for i in $LIST_NODES
+  do
+    STEP=$INCREMENT
+    echo --------------------------------------
+    echo Start on node $i the command TPROF with:
+    echo Freq_tprof=$FREQ_TPROF
+
+    while [ $STEP -le $FULLTIER ]
+    do
+
+      echo    at now + $STEP minutes
+      $RSH ${i} "at -f $REP_TPROF_AT/command_for_at.sh now + $STEP minutes" 2>> $REP_TPROF_AT/${i}_at_jobs.txt
+
+      STEP=`expr $STEP + $INCREMENT`
+    done
+
+    cat $REP_TPROF_AT/${i}_at_jobs.txt
+
+  done
+fi
+
+
+#-----------------------------------------------------------
+# START OF FILEMON ON ALL NODES
+
+if [ $USE_FILEMON -eq 1 ]
+then
+  FULLTIER=`expr $NSECOND \* $NCOUNT`
+  FULLTIER=`expr $FULLTIER / 60`
+  INCREMENT=`expr $FULLTIER / $FREQ_FILEMON`
+
+  echo cd $REP_FILEMON  > $REP_FILEMON_AT/command_for_at.sh
+  echo "filemon -O all -o filemon.out;sleep 120;trcstop" >> $REP_FILEMON_AT/command_for_at.sh
+  echo mv filemon.out $REP_FILEMON/'`hostname`-`date +%d%b%y_%H%M%S`'_FILEMON.out  >> $REP_FILEMON_AT/command_for_at.sh
+
+  chmod 755  $REP_FILEMON_AT/command_for_at.sh
+
+  for i in $LIST_NODES
+  do
+    STEP=`expr $INCREMENT + $SHIFT_FILEMON_AT`
+    echo --------------------------------------
+    echo Start on node $i the command FILEMON with:
+    echo Freq_filemon=$FREQ_FILEMON
+
+    while [ $STEP -le $FULLTIER ]
+    do
+
+      echo    at now + $STEP minutes
+      $RSH ${i} "at -f $REP_FILEMON_AT/command_for_at.sh now + $STEP minutes" 2>> $REP_FILEMON_AT/${i}_at_jobs.txt
+
+      STEP=`expr $STEP + $INCREMENT`
+    done
+
+    cat $REP_FILEMON_AT/${i}_at_jobs.txt
+
+  done
+fi
+
+
+#-----------------------------------------------------------
+# GETINFO ON ALL NODES
+
+if [ $USE_GETINFO -eq 1 ]
+then
+  for i in $LIST_NODES
+  do
+    $RSH ${i} "$REP_SCRIPT/getinfo $REP_GETINFO"
+  done
+fi
+
+#-----------------------------------------------------------
+# VMSTAT ON ALL NODES
+
+if [ $USE_VMSTAT -eq 1 ]
+then
+  echo cd $REP_VMSTAT > $REP_VMSTAT_AT/command_for_at.sh
+  echo $REP_VMSTAT_AT/vmstat $ARG_VMSTAT $NSECOND $NCOUNT \> '`hostname`-`date +%d%b%y_%H%M%S`'.vmstat >> $REP_VMSTAT_AT/command_for_at.sh
+
+  chmod 755  $REP_VMSTAT_AT/command_for_at.sh
+
+  for i in $LIST_NODES
+  do
+    echo --------------------------------------
+    echo Start on node $i the command VMSTAT with:
+    echo arguments=$ARG_VMSTAT
+
+    $RSH ${i} "at -f $REP_VMSTAT_AT/command_for_at.sh now" 2>> $REP_VMSTAT_AT/${i}_at_jobs.txt
+    cat $REP_VMSTAT_AT/${i}_at_jobs.txt
+  done
+fi
+
+
+#-----------------------------------------------------------
+# NETSTAT ON ALL NODES
+#
+#if [ $USE_NETSTAT -eq 1 ]
+#then
+  #echo cd $REP_NETSTAT > $REP_NETSTAT_AT/command_for_at.sh
+  #echo $REP_NETSTAT_AT/netstat $ARG_NETSTAT $NSECOND $NCOUNT \> '`hostname`-`date +%d%b%y_%H%M%S`'.vmstat >> $REP_NETSTAT_AT/command_for_at.sh
+#
+  #chmod 755  $REP_NETSTAT_AT/command_for_at.sh
+#
+  #for i in $LIST_NODES
+  #do
+    #echo --------------------------------------
+    #echo Start on node $i the command NETSTAT with:
+    #echo arguments=$ARG_NETSTAT
+#
+    #$RSH ${i} "at -f $REP_NETSTAT_AT/command_for_at.sh now" 2>> $REP_NETSTAT_AT/${i}_at_jobs.txt
+    #cat $REP_NETSTAT_AT/${i}_at_jobs.txt
+  #done
+#fi
+
+
+
+#-----------------------------------------------------------
+# Reminder of the directory name in case you need to execute fnmonstop
+
+echo
+echo --------------------------------------
+echo "Remind you the RUN results directory name" 
+echo $REP_RESULT
+echo
+echo "PARAMETER FOR FNMONSTOP --->>>  $REP_PARAM "
+echo

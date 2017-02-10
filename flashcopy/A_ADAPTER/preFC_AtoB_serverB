@@ -1,0 +1,74 @@
+#!/bin/ksh
+
+# This script needs to be run on system B before a flashcopy creation (mkflash command)
+# When you restore on system B and the flashcopy source is system A
+# 
+
+next_step ()  {
+echo
+echo TYPE ENTER FOR NEXT STEP
+echo
+read NEXT
+}
+
+clear
+
+# Inform what is going to bo done
+echo
+echo ==============================================
+echo WHAT IS GOING TO BE DONE :
+echo ==============================================
+echo "  1) varyoffvg of the volumes"
+echo "  2) exportvg of the volume groups"
+echo "  3) rmdev of the hdisk"
+echo   END
+
+next_step
+
+
+# Stop Oracle:
+echo
+echo ==============================================
+echo PLEASE STOP ALL ORACLE PROCESSES.
+echo ==============================================
+
+echo CTRL-C to stop this script if needed
+echo and then rerun this script
+
+next_step
+
+# Varyoffvg of the active FC* VG
+echo
+echo ==============================================
+echo VARYOFFVG OF THE VG
+echo ==============================================
+varyoffvg_FC.sh
+
+next_step
+
+# Exportvg of the FC* VG
+echo
+echo ==============================================
+echo EXPORTVG OF THE VG
+echo ==============================================
+exportvg_FC.sh
+
+next_step
+
+# Rmdev of the disk
+echo
+echo ==============================================
+echo RMDEV OF THE DISKS
+echo ==============================================
+rmdev_FC.sh
+
+next_step
+
+echo
+echo ==============================================
+echo THE SYSTEM IS NOW READY, YOU CAN BUILD THE FLASHCOPY
+echo WITH THIS SYSTEM IN DESTINATION
+echo ==============================================
+echo
+echo END OF SCRIPT
+echo

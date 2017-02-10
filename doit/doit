@@ -1,0 +1,184 @@
+#!/bin/ksh
+
+#set -x
+
+####################################################################
+# Do It
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+# Release : V14.1 - December, 5th 2O14
+#   -> Linux adaptation
+# Release : V12.1 - January, 11th 2O12
+#   -> Bug corrected : grep ${i}: instead of just grep $i on the platform file 
+#                      (wbifn abd wbi hosts : grep wbi gives 2 responses)
+# Release : V11.1 - November, 8th 2O11
+#   -> added the -s option (for lsplatform command)
+# Release : V1.0 - November, 8th 2006
+#   -> Initial release
+
+####################################################################
+# Execute the command given in parameter on all servers defined   
+# in the conf file
+#
+
+####################################################################
+
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 6`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+#-----------------------------------------------------------
+# Analyse the parameters of the scripts
+
+PARAM=$*
+NBRE_PARAM=$#
+NBRE_OPTION=$NBRE_PARAM
+SCRIPT=$0
+
+OKn=0
+
+#-----------------------------------------------------------
+# VARIABLES
+
+CMD=$*
+LIST_OF_NODES=$NODES
+SHORT=0
+
+
+#-----------------------------------------------------------
+# USAGE AND HELP FUNCTIONS
+
+function usage
+{
+   echo
+   echo "usage: $SCRIPT"
+   echo
+   echo "usage : $SCRIPT command "
+   echo "        $SCRIPT -s command "
+   echo "        $SCRIPT \"command | command\" "
+   echo "        $SCRIPT [-nodes <node1,node2,node3...>] command"
+   echo "        $SCRIPT [-nodes <node1,node2,node3...>] \"command | command\""
+   echo "        $SCRIPT [-h]"
+   echo
+   echo "type $SCRIPT -h for complete informations."
+   echo
+}
+
+function help
+{
+   usage
+   echo "doit is a dsh like script, using the list of NODES defined in the fabtools.conf file"
+   echo "($NODES)"
+   echo
+   echo "The possible options are -->"
+   echo
+   echo "-s            optional : Give a short and compressed result" 
+   echo 
+   echo "-nodes <list of nodes>"
+   echo "              optional : use this list of nodes rather than the one defined into"
+   echo "                         the fabtools.conf file"
+   echo
+   echo "TAKE CARE : the command to execute should be the last parameter."
+   echo
+   echo "other parameters are available into the fabtools.conf file."
+   echo
+}
+
+#-----------------------------------------------------------
+# AT LEAST ONE PARAMETER IS REQUIRED (The command)
+
+if [ $# -eq 0 ]
+then
+  usage
+  exit 1
+fi
+
+#-----------------------------------------------------------
+# Analyse of the paramaters
+
+
+COUNT=1
+while [ $COUNT -le $NBRE_OPTION ]
+do
+   case $1 in
+   -h)
+      help
+      exit 0
+   ;;
+
+   -nodes)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" -o OKn -eq 1 ]
+      then
+         usage
+         exit 1
+      fi
+
+      LIST_OF_NODES=`echo $2 | sed "s/,/ /g"`
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKn=1
+   ;;
+
+   -s)
+      SHORT=1
+   ;;
+
+   *)
+      CMD=$*
+      COUNT=$NBRE_OPTION
+   ;;
+
+   esac
+
+   COUNT=`expr $COUNT + 1`
+   shift 1
+done
+
+
+#-----------------------------------------------------------
+# MAIN PART
+
+if [ SHORT -eq 0 ]
+then
+  echo 
+  echo "######################################"
+  echo Command : $CMD
+  echo "######################################"
+  echo 
+
+  for i in $LIST_OF_NODES
+  do 
+    echo --------------------------------------
+    if [ -f $PLATFORM_FILE ]
+    then
+      platform=`grep "${i}:" $PLATFORM_FILE | awk -F: '{print $2}'`
+      echo "NODE $i ($platform) :"
+    else
+      echo "NODE $i :"
+    fi
+    $RSH $i $CMD 
+    echo
+  done
+
+else
+  for i in $LIST_OF_NODES
+    do
+    echo $EchoParams "$i:\c"
+    $RSH $i $CMD
+  done
+fi

@@ -1,0 +1,325 @@
+#!/bin/ksh
+
+#set -x
+####################################################################
+# install_fabtools
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+#
+# Release : V17.01 - February 10th, 2017
+#  -> .profile to look from ~ instead of / (PATH_FILE)
+# Release : V14.01 - December 5th, 2014
+#  -> Linux Adaptation
+# Release : V10.01 - June 25th, 2010
+#   Bug corrected about " " in case NODES = "toto tutu titi tata"
+#   Suppress the error message when trying to backup a file (like /.profile) that does not exists
+# Release : V9.03 - November 26th, 2009
+#   Bug correction: the dailycheck path for the crontab was wrong
+# Release : V9.02 - September 22nd, 2009
+#   Added the dailycheck into the crontab
+# Release : V9.01 - May 20th, 2009
+#   Added the -nmonnode option to the CMD_CRONTAB (new option added into the fnmon script)
+# Release : V1.4 - October 3rd, 2008
+#   Added the -script option to the CMD_CRONTAB (new option added into the fnmon script)
+# Release : V1.3 - October 1st, 2008
+#   Added the +getinfo option to the CMD_CRONTAB (new option added into the fnmon script)
+#   Removed the -T option to the CMD_CRONTAB (already into the NMON_ARGS)
+# Release : V1.2 - March 19th, 2008
+#   Added the -daily option (new option added into the fnmon script)
+# Release : V1.1 - October 2sd, 2007
+#   correction of a bug : install_fabtools creates .screenrctest instead of .screenrc
+# Release : V1.0 - September 2sd, 2007
+#   First Release
+
+# ENCORE A FAIRE : 
+#   + copie de fabtools (y compris le fabtools.conf sur les autres noeuds
+#     (fabsync) 
+
+####################################################################
+# Script to install the fabtools Tools
+####################################################################
+
+if [ `id -u` -ne 0 ]
+then
+  echo
+  echo "YOU MUST BE ROOT TO USE THIS COMMAND"
+  echo "YOU ARE"
+  id
+  echo
+  echo EXITING
+  echo
+  exit 1
+fi
+
+OSTYPE=`uname`
+if [ $OSTYPE == "Linux" ]
+then
+  EchoParams="-e"
+else
+  EhoParams= ""
+fi
+
+
+#-----------------------------------------------------------
+# Set the REP_SCRIPT parameter
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 18`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+#-----------------------------------------------------------
+# Set the configuration file's parameters
+
+CONF_FILE=$REP_SCRIPT/fabtools.conf
+
+echo
+echo CONFIGURATION OF THE FILE $CONF_FILE
+echo ------------------------------------
+echo "Please provide the next parameters ([current value])"
+
+for i in `cat $CONF_FILE | grep "# Install Variable" | awk -F# '{print $1}' | sed "s/ /%/g"`
+do
+   VAR=`echo $i | awk -F= '{print $1}'` # Name of the variable
+   DEF=`echo $i | awk -F= '{print $2}'` # Actual value of the variable into the CONF_FILE
+
+   # quotation marks or not into the CONF_FILE ?
+   echo $DEF | grep -q '"'
+   GUILLEMET=`echo $?`
+
+   # the goal of the % stuff is to make the for command
+   # considering info like NODES="toto titi" as ONE parameter instead of two parameters
+   # 1: NODES="toto   2: titi".
+   # So first, we convert NODES="toto titi" to NODES="toto%titi", so the for is taking
+   # this as one parameter, and then convert back to NODES="toto titi" into the DEF Variable.
+   DEF=`echo $DEF | sed "s/%/ /g"`
+
+   # We suppress the quotation mark " into the DEF
+   DEF=`echo $DEF | sed "s/\"//g"`
+
+   echo
+   if [ $OSTYPE == "Linux" ]
+   then
+     awk 'BEGIN{RS=ORS="\n\n";FS=OFS="\n"}/'$VAR'=/' $CONF_FILE | grep -v "# Install Variable" | grep "#"
+   else
+     cat $CONF_FILE | grep -p -w "^${VAR}" | grep -v "# Install Variable" | grep "#"
+   fi
+   echo $EchoParams "$VAR [$DEF] : \c"
+   read MODIF
+
+   MODIF=`echo $MODIF | sed "s/ /%/g"`
+
+   if [ X$MODIF == "X" ]
+   then
+      MODIF=$DEF
+   else
+      MODIF=`echo $MODIF | sed "s/%/ /g"`
+   fi
+
+   if [ $GUILLEMET -eq 0 ]
+   then
+      cat $CONF_FILE | sed "s&$VAR=\"$DEF\"&$VAR=\"$MODIF\"&" > tempo
+   else
+      cat $CONF_FILE | sed "s&$VAR=$DEF&$VAR=$MODIF&" > tempo
+   fi
+
+   cp tempo $CONF_FILE
+
+done
+
+rm tempo > /dev/null 2> /dev/null
+
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file with the new parameters
+
+. $CONF_FILE
+
+
+#-----------------------------------------------------------
+# VARIABLES
+
+REP_RESULT=$REP_TOOLS/install
+
+if [ $# -ne 0 ]
+then
+  echo
+  echo "usage : $0"
+  echo
+  echo "        just run it. You'll find the result file into $REP_RESULT"
+  echo "        -h To display this help !"
+  echo
+  exit 1
+fi
+
+FILE_RESULT="$REP_RESULT/Install_`hostname`_`date +%d%b%y_%H%M%S`.log"
+CMD_CRONTAB="$REP_SCRIPT/fnmon -s $DAILY_SECOND -c $DAILY_COUNT -r daily_fnmon -novi -daily +getinfo -script -nmonnode 1>/dev/null 2>/dev/null"
+PATH_FILE="~/.profile"
+
+#-----------------------------------------------------------
+# Test the $RSH on all NODES
+
+echo
+echo "Testing first the $RSH command on all NODES"
+echo "DO NOT GIVE ANY PASSWORD IF REQUESTED"
+
+RSH_good=1
+for i in $NODES
+do
+  $RSH $i "uname -a"
+  if [ $? -ne 0 ]
+  then
+    RSH_good=0
+  fi
+done
+
+if [ $RSH_good -ne 1 ]
+then
+  echo
+  echo "PROBLEM WITH $RSH COMMAND. EXITING ..."
+  echo "You should be able to $RSH to all nodes: $NODES"
+  exit 1
+fi
+
+#-----------------------------------------------------------
+# Do we need to replicate the installation ?
+
+echo
+echo "Do we need to replicate the installation onto all nodes ($REP_SCRIPT) ? "
+echo "Say no if you install the fabtools onto an NFS filesystem seen by all nodes for example"
+echo $EchoParams "answer (yes by default): [y|n] : \c"
+read answer
+
+answer="X$answer"
+if [ $answer != "Xn" ] && [ $answer != "Xno" ]
+then
+   $REP_SCRIPT/fabsync
+else
+   echo "No Copy then"
+fi
+
+#-----------------------------------------------------------
+# Create the result directory
+echo
+echo Creation of the directory $REP_RESULT if needed
+mkdir -p $REP_RESULT 2>/dev/null
+
+echo Creation of the file $FILE_RESULT
+touch $FILE_RESULT
+echo
+
+#-----------------------------------------------------------
+# Add the line into the crontab to start the fnmon daily
+
+echo >> $FILE_RESULT
+echo "##############################################" >> $FILE_RESULT
+echo "Add the lines into the crontab to start the fnmon daily and check it" >> $FILE_RESULT
+date >> $FILE_RESULT
+echo >> $FILE_RESULT
+
+echo --------------------------------------
+echo "Add the lines into the crontab to start the fnmon daily and check it"
+
+echo Backuping the crontab into /tmp/crontab.before_fabtools
+crontab -l > /tmp/crontab.before_fabtools
+echo "Crontab before the installer" >> $FILE_RESULT
+echo "----------------------------" >> $FILE_RESULT
+cat /tmp/crontab.before_fabtools >> $FILE_RESULT
+
+echo $EchoParams "Adding the line ... \c"
+cp /tmp/crontab.before_fabtools /tmp/crontab.fabtools
+echo "#" >> /tmp/crontab.fabtools
+echo "# Automatic start of a daily fnmon (monitoring)" >> /tmp/crontab.fabtools
+echo "0 0 * * * $CMD_CRONTAB" >> /tmp/crontab.fabtools
+echo "# Automatic check for the daily fnmon (monitoring)" >> /tmp/crontab.fabtools
+echo "0,15,30,45 * * * * $REP_SCRIPT/dailycheck 1>/dev/null 2>/dev/null" >> /tmp/crontab.fabtools
+
+crontab /tmp/crontab.fabtools
+
+echo >> $FILE_RESULT
+echo "Crontab after the installer" >> $FILE_RESULT
+echo "---------------------------" >> $FILE_RESULT
+crontab -l >> $FILE_RESULT
+echo Done
+ 
+#-----------------------------------------------------------
+# Adding the $REP_SCRIPT into the PATH
+
+echo >> $FILE_RESULT
+echo "##############################################" >> $FILE_RESULT
+echo "Add the PATH $REP_SCRIPT into $PATH_FILE" >> $FILE_RESULT
+date >> $FILE_RESULT
+echo >> $FILE_RESULT
+
+echo
+echo --------------------------------------
+echo "Add the PATH $REP_SCRIPT into $PATH_FILE"
+
+for i in $NODES
+do
+   echo "NODE : $i"
+   echo "NODE : $i" >> $FILE_RESULT
+
+   echo Backuping the $PATH_FILE into /tmp/$PATH_FILE.before_fabtools
+   $RSH $i "cp $PATH_FILE /tmp/$PATH_FILE.before_fabtools > /dev/null 2>&1"
+   
+   echo "$PATH_FILE before the installer" >> $FILE_RESULT
+   echo "------------------------------" >> $FILE_RESULT
+   $RSH $i "cat $PATH_FILE" >> $FILE_RESULT
+   
+   echo $EchoParams "Adding the line ... \c"
+   $RSH $i "echo \# >> $PATH_FILE"
+   $RSH $i "echo \# The following line is added by fabtools >> $PATH_FILE"
+   $RSH $i "echo export PATH='\$PATH':$REP_SCRIPT >> $PATH_FILE"
+   echo Done
+      
+   echo >> $FILE_RESULT
+   echo "$PATH_FILE after the installer" >> $FILE_RESULT
+   echo "-----------------------------" >> $FILE_RESULT
+   $RSH $i "cat $PATH_FILE" >> $FILE_RESULT
+
+   echo 
+   echo >> $FILE_RESULT
+
+done
+   
+#-----------------------------------------------------------
+# Adding the .screenrc file into the $HOME directory
+
+echo >> $FILE_RESULT
+echo "##############################################" >> $FILE_RESULT
+echo "Add the .screenrc file into the $HOME directory" >> $FILE_RESULT
+date >> $FILE_RESULT
+echo >> $FILE_RESULT
+
+echo
+echo --------------------------------------
+echo "Add the .screenrc file into the $HOME directory"
+
+for i in $NODES
+do
+$RSH $i cp $REP_SCRIPT/../repository/screen/.screenrc $HOME/.screenrc
+echo "Server $i:" >> $FILE_RESULT
+echo "----------------------" >> $FILE_RESULT
+$RSH $i ls -la $HOME/.screenrc  >> $FILE_RESULT
+done
+
+
+#-----------------------------------------------------------
+# Reminder of the directory name
+
+echo
+echo --------------------------------------
+echo "Remind you the LOGGING directory/file name"
+echo $FILE_RESULT
+echo
+
+echo >> $FILE_RESULT
+echo "##############################################" >> $FILE_RESULT
+echo "END OF FILE" >> $FILE_RESULT

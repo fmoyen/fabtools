@@ -1,0 +1,371 @@
+V17.01 - February 10th, 2017
+ - install_fabtools: .profile to look from ~ instead of / (PATH_FILE)
+
+V14.2 -  December, 5th 2014
+ - linux Adaptation. Enables to start fabtools from a Linux On Power System
+
+V14.1 -  January, 24th 2014
+ - fnmon
+  -> change grep $i $PLATFORM_FILE by grep -w $i $PLATFORM_FILE
+     in order to prevent multiple AIX if looking for sapas1 when exist sapas1, sapas10, sapas11, etc
+
+V13.6 -  July, 11th 2013
+ - fnmoncheck
+  -> Bug when looking for "-c" or "-s" if the hostname of one lpar is something like "*-c*" or "*-s*".
+     Changed to look for " -c " or " -s " instead.
+
+V13.5 -  May, 14th 2013
+ - added the extract_getinfo tool to extract the result of a specific command from a getinfo.txt report
+
+V13.4 -  April, 26th 2013
+ - fnmon / fnmonstop
+  -> Added the SAMPLE_SCRIPT (if USE_SCRIPT=1 and SAMPLE_SCRIPT exists, run the script SAMPLE_SCRIPT every SECOND_SAMPLE_SCRIPT)
+  -> Added the test to see if PRE/POST/SAMPLE SCRIPTS are empty or not (as USE_SCRIPT is used for the 3 SCRIPTS)
+     So this allow to have a POST_SCRIPT without PRE/SAMPLE SCRIPTS for example
+
+V13.3 -  April, 25th 2013
+ - Added the netlatency system_tool (S. Chabrolles) to measure network (real or virtual) latency
+   If the latency is increasing during a test, then probably you're reaching the maximum the network can give
+   Syntaxe : netlatency -i en0 -d 10.7.16.3
+
+V13.2 -  April, 24th 2013
+ - fnmon: replace the usage of "seq" in a for by a while (for system without seq command)
+
+V13.1 -  April, 23rd 2013
+ - fnmon/fnmonstop/fnmoncheck: change the header RUN_ by RUN__ (to prevent problem when the runname (-r) is something like "RUN_DE_REF"
+ - getinfo / getinfo_standalone:  Added "lsmcode -c", "instfix -icq | grep :-:", PowerHA configuration part
+
+V12.3 - January, 25th 2O12
+ - fnmonstop: Bug correction to allow the script to work when stopping a daily fnmon running
+ - fnetperf : Added the -c (count) option
+
+V12.3 - January, 17th 2O12
+ - getinfo: Added VIOS specific commands (ioscli, lsmap)
+
+V12.2 - January, 11th 2O12
+ - doit: Bug corrected : grep ${i}: instead of just grep $i on the platform file
+                   (wbifn abd wbi hosts : grep wbi gives 2 responses)
+
+V12.1 - January, 5st 2012
+ - minor bug corrected in fabtools.conf (Two NODES lines)
+
+V11.8 - November, 21st 2011
+ - Petit problème trouvé dans le fnmoncheck. Petite erreur, important conséquence qui a été révélé par des noms de host qui comporte "-F"
+   (Merci Sylvain Delabarre :-D)
+
+V11.7 - November, 9th 2011
+ - Changed the ADD_SCRIPT TO PRE_SCRIPT
+ - ADDED POST_SCRIPT into fnmonstop script
+ - Bug correction if fnmonstop was run onto the piana partition (where the nmon is not running). REP_RESULT was not correct.
+
+V11.6 - November, 8th 2011
+SUPPORT OF LINUX for doit, fnmon, fnmoncheck, fnmonstop scripts
+ - added the PLATFORM_FILE variable onto fabtools.conf file
+ - added the lsplatform script 
+ - added the "-s" option for doit script
+ - added the OS type display for doit script
+ - modified the fnmon to support linux
+
+V11.5 - September, 29th 2011
+ - added the nstress tools into system_tools directory
+(available here : http://www.ibm.com/developerworks/wikis/display/WikiPtype/nstress)
+
+V11.4 - May, 27th 2011
+ - fnmoncheck : drastic improvement of script performances
+ - getinfo : added the "who -b" to know the boot time/date info
+ - Added the checkdemoted Sebastien Chabrolles's script to check if you're doing demoted I/O (CIO)
+ - getinfo : added the errpt and errpt -a commands 
+
+V11.3 - May, 17th 2011
+ - getinfo: added AIX 5.3 support for collecting tunables
+ - standalone: added the gettune standalone script to gather only tunables
+ -             added the getconfig standalone script to gather all infos on the system
+
+V11.2 - March, 16th 2011
+ - getinfo: added lsattr -El for ent and en devices
+
+V11.1 - March, 8th 2011
+ - added the system_tools netperf installation procedure and binary for AIX
+
+V10.7 - november, 17st 2010
+ - purge_vg script added
+
+V10.6 - october, 21st 2010
+ - fnmonstop: added the -h option
+
+V10.5 - August, 12th 2010
+ - fnmon: Bug correction for FILEMON (usage of FREQ_TPROF instead of FREQ_FILEMON
+
+V10.4 - July, 8th 2010
+ - getinfo: added lsattr -El and lscfg -vpl for fscsi$i, vscsi$i and hdisk$i
+
+V10.3 - June, 25th 2010
+ - fabsync: bug fixed (echo toto; exit 1 !!)
+ - install_fabtools: Bug corrected about " " in case NODES = "toto tutu titi tata"
+                     Added the fabsync into the install_fabtools
+ - fabtools.conf : removed from install_fabtools scripts tprof, netstat, etc.
+
+V10.2 - February, 17th 2010
+ - getinfo: added the -F option for vmo, schedo, ioo, nfso, etc
+
+V10.1 - February, 3rd 2010
+ - fnmon: bug correction (mkdir of runid directory to allow the creation of run_id file the very first time
+
+V9.21 - December, 16th 2009
+ - getinfo: added instfix -i and emgr -l
+
+V9.20 - November, 26th 2009
+ - getinfo: added svmon -G to see large pages usage
+
+V9.19 - November, 26th 2009
+ - fnmon and fnmonstop modification to deal with the daily `date %d%m%y` directory
+
+V9.18 - November, 26th 2009
+ - install_fabtools: bug correction
+
+V9.17 - November, 10th 2009
+ - getinfo: added the lspath command
+
+V9.16 - October, 13th 2009
+ - added the perfpmr tool for AIX 5.3 and AIX 6.1
+   (memdetails.sh is interesting for example)
+
+V9.15 - September, 22nd 2009
+ - fnmon: added the [-nodes <node1,node2,node3...>] option
+ - fnmoncheck: added the OUTFILE report (used by dailycheck) with the -c option
+ - new script: dailycheck to restart a DAILY nmon if one node is rebooted
+ - install_fabtools: added the dailycheck into the crontab
+
+V9.14 - September, 8th 2009
+ - Added repository/ssh
+ - Added -tar option to fabsync
+
+V9.13 - August, 25th 2009
+ - getinfo: added schedo -L
+ - getinfo: added schedo -a, vmo -a, no -a, ioo -a, nfso -a
+
+V9.12 - June, 15th 2009
+ - getinfo: added the lsattr -El fcs$i
+ - getinfo: added the lsattr -El fscsi$i
+
+V9.11 - June, 5th 2009
+ - Added the spload system tools (to load cpu/mem system)
+
+V9.10 - June, 4th 2009
+ - getinfo: "netstat -rn" added
+
+V9.09 - May, 26th 2009
+ - hange startrun script to be executed by a non-root user (setuid bit and sudo command to use fnmon commands)
+
+V9.08 - May, 20th 2009
+ - Added the startrun script
+
+V9.07 - May, 20th 2009
+ - Added the $NMON_NODES variable into conf file and option -/+nmonnode for fnmon script.
+
+V9.06 - May, 19th 2009
+ - Added the SIGDANGER routine into repository (allows to analyse why a system ran out of paging space prb)
+
+V9.05 - May, 19th 2009
+ - Added the system_tools (lsfscache, lsrunq, etc) from S. Chabrolles
+
+V9.04 - March, 19th 2009
+ - errptmon: Added the help and usage function
+
+V9.03 - March, 13th 2009
+ - mkDG : new script to create diskgroup files to use with the -g nmon option.
+
+V9.02 - March, 10th 2009
+ - fnmoncheck: Support of topas_nmon (-youtput_dir and -ystart_time were causing some prbs of precedent release)
+
+V9.01 - March, 10th 2009
+ - fnmon: Add the RUN ID to have a generic run number ID.
+ - fnmonstop: now OK is the default. If OK, there is no rename of RUN_dir to OK_dir
+
+V2.54 - December, 2nd 2008
+ - Errptmon debugging (always needs to have help and usage functions written)
+
+V2.53 - November, 17th 2008
+ - fnmon :  The DIR results is now 111708 instead of 17Nov08 (ls give the dirs in order)
+
+V2.52 - October, 17th 2008
+ - fnmon : changes done so the title of some graphs (CPU_ALL) will include the node name
+
+V2.51 - October, 16th 2008
+ - getinfo : added vmstat -v
+
+V2.50 - October, 15th 2008
+ - fnmonstop : Using the Signal USR2 to kill the nmon processes.
+
+V2.49 - October, 6th 2008
+ - Added the tool : errptmon
+
+V2.48 - October, 5th 2008
+ - getinfo: Added the manage_disk_drivers option
+
+V2.47 - October, 4th 2008
+ - Added the NIM tool nim_savevg
+
+V2.46 - October, 4th 2008
+ - Added the NIM tool nim_mksysb
+ - fnmoncheck: Correction of little bug on REP_SCRIPT generation (11 instead of 12)
+
+V2.45 - October, 3rd 2008
+ - Added the repository/add_scripts
+ - fnmon: Added the possibility for fnmon to start an additional script (USE_SCRIPT)
+ - fnmon: Added : -script / +script options (deactivate / activate the use of ADD_SCRIPT)
+ - install_fabtools:  Added the -script option to the CMD_CRONTAB (new option added into the fnmon script)
+
+V2.44.modified - October, 2nd 2008
+ - start of impplementation of USE_SCRIPT for fnmon
+
+V2.44 - October, 2nd 2008
+ - getinfo : added lsfs -q
+
+V2.43 - October, 1st 2008
+ - fnmon: Added : -getinfo / +getinfo options (deactivate / activate the option)
+ - install_fabtools: Added : +getinfo option to the CMD_CRONTAB
+                     Removed : -T option the the CMD_CRONTAB
+ -getinfo : Added lsslot c slot, lsslot -c pci, fget_config -Av, mpio_get_config -A
+
+V2.42 - September, 12th 2008
+ - getinfo : bug correction that makes lsluns not working
+
+V2.41 - September, 8th 2008
+ - getinfo : added lsluns
+
+V2.40 - September, 8th 2008
+ - mkFCscripts: Added the possibility to give source and target in parameters
+ - mkFCscripts: Added the usage function.
+
+V2.39 - September, 8th 2008
+ - Creation of the README file
+
+V2.38 - September, 5th 2008
+ - correction done onto the fnmon_README.txt file
+
+V2.37 - September, 4th 2008
+ - industrialization of mkFCscripts tool (now available under bin)
+
+V2.36 - September, 4th 2008
+ - getinfo V1.16 added entstat -d ent* and added fcstat fcs*
+
+V2.35 - August, 22nd 2008
+  - changes done onto the repository/.screenrc (termcapinfo, scrollbar 5000)
+
+V2.34 - May, 21st 2008
+  - Moved the ARG_NMON initialization from fnmon script to fabtools.conf
+
+V2.33 MODIFIED - April, 9th 2008
+  - Added the -T nmon option into ARG_NMON
+  - Added the -g /etc/diskgroup.txt option into ARG_NMON
+
+V2.33 - April, 9th 2008
+  - Added the DAILY directory for the daily fnmon
+
+V2.32 MODIFIED - April, 9th 2008
+  - Added the -T nmon option into ARG_NMON
+
+V2.32 - April, 9th 2008
+  - Added the Instfix -i | grep ML into getinfo script
+  - Removed the -T nmon option into ARG_NMON
+
+V2.31 MODIFIED - March, 25th 2008
+  - Added the -T nmon option into ARG_NMON
+
+V2.31 - March, 25th 2008
+  - fnmon : Deleted a redundancy explanation into the help function
+  - Added : -vmstat / +vmstat options (deactivate / activate the option)
+  - Added : -sample / +sample options (deactivate / activate the option)
+  - Added : -tprof / +tprof options (deactivate / activate the option)
+  - Added : -filemon / +filemon options (deactivate / activate the option)
+
+V2.30 - March, 20th 2008
+  - Added the daily info into the Informations.txt file
+
+V2.29 - March, 19th 2008
+  - Added the vmstat and netstat possibilities
+  - Added the -daily option for fnmon (and for install_fabtools as well)
+
+V2.28 - March, 18th 2008
+  - Suppression of the fabtools.conf link into the fnmon directory. This link caused
+fnmon to try and start fabtools/fnmon/getinfo and it failed as getinfo is not here.
+
+V2.27 - March, 17th 2008
+  - Added the link fabtools.conf -> ../conf/fabtools.conf into the scripts directories
+(this will allow to run the scripts from their home directory (fnmon into fabtools/fnmon directory for example)
+
+V2.26 - March, 17th 2008
+  - Added the sudoers example file into the repository directory
+
+V2.25 - March, 14th 2008
+  - fnmon / fnmonstop / fnmoncheck : chmod 744 (use sudo to use them without root privileges)
+
+V2.24 - March, 13th 2008
+  - fnmon : Adding the -P nmon option (Paging stats)
+
+V2.23 - March, 12th 2008
+  - fnmon : Adding the -d nmon option (disk response time and wait time)
+
+V2.22 - February, 28th 2008
+  - update of the fnmon readme file
+  - bug correction with the fnmoncheck -h option.
+
+V2.21 - February, 26th 2008
+  - getinfo : added pcmpath query adapter / device and essmap
+  - changed no/vmo/nfso/ioo -a by no/vmo/nfso/ioo -L
+
+
+V2.20 - February, 08th 2008
+  - .screenrc : for the log file, using %0c instead of %c
+    Between 1AM and 9AM replace the " " by a "0". So for example, "09:47" instead of " 9:47"
+
+V2.19 - November, 20th 2007
+  - getinfo : added /etc/security/limits, lslv and lslv -l of all LV
+
+V2.18 -  October, 16th 2007
+  - fabsync : Added the -ver option
+
+V2.17 -  October, 16th 2007
+  - fnmon : Adding the possibility to not give a count ("-c")
+
+V2.16
+  - Added lsvg, lsvg -l, lsvg -p, ls -la /dev and lspv into getinfo.
+
+V2.15
+  - correction of a bug : install_fabtools creates .screenrctest instead of .screenrc
+
+V2.14
+  - add the myscreen script
+
+V2.13
+  - add the dynamic parameters modification with install_fabtools script
+
+V2.12
+  - add the install_fabtools scripts
+  - add the fnmoncheck script
+
+V2.11
+  - add the .screenrc file into repository. Should be installed into $HOME (/ for root).
+  - add the preFC commande to unmount FS and veryoffvg the VG before doing a flashcopy operation
+
+V2.10
+  - add the REP_TOOLS directory into the conf file.
+  - modify the getinfo, fabsync, fnetperf to use the REP_TOOLS directory.
+  - add the mkFCscripts scripts
+
+V2.9
+  - modify the results directory from nmon to fnmon
+
+V2.8
+  - adding the filemon option
+
+V2.7
+  - now nmon results  are in $REP_RESULT/nmon
+
+V2.6
+  - added the gmon agents
+
+V2.5
+  - added the lparmon Agents
+  - added the repository directory

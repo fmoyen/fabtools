@@ -1,0 +1,29 @@
+#!/bin/ksh
+
+#set -x
+
+
+####################################################################
+# myscreen
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V1.0 -  September, 5th 2007
+#  -> First release
+
+####################################################################
+# Display the "screen" you are attached on.
+####################################################################
+
+PTS=`who am i | awk '{print $2}'`
+PROC_KSH=`ps -ef | grep $PTS | grep ksh | grep -v grep | awk '{print $2}'`
+
+PROC_KSH=`echo $PROC_KSH | awk '{print $1}'` # on en garde qu'un
+
+PROC_SCREEN=`proctree $PROC_KSH | grep -v grep | awk '{print $1}'`
+
+for i in $PROC_SCREEN
+do
+   screen -ls | grep $i
+done

@@ -1,0 +1,26 @@
+#!/bin/ksh
+
+##################################################
+# name: Klparmon
+# purpose: script that will start or stop the lparmon agent.
+##################################################
+
+PLATFORM="aix53"
+#PLATFORM="aix52"
+#PLATFORM="linux"
+
+case "$1" in
+start )
+	/usr/opt/fabtools/bin/lparmon_v2_$PLATFORM
+	;;
+stop )
+        PIDs=`ps -ef | grep lparmon_v2 | grep -v grep | awk '{print $2}'`
+        for i in `echo $PIDs`
+        do
+          kill $i
+        done
+	;;
+* )
+	echo "Usage: $0 (start | stop)"
+	exit 1
+esac

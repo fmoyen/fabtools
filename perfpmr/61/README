@@ -1,0 +1,261 @@
+AIX 6.1 PERFORMANCE DATA COLLECTION PROCESS
+---------------------------------------------------------
+
+  Note:   The act of collecting performance data will
+          add load on the system.  HACMP users may
+          want to extend the Dead Man Switch timeout
+          or shutdown HACMP prior to collecting perfpmr data
+          to avoid accidental failovers.
+
+
+  TABLE OF CONTENTS
+  -----------------
+       I.   INTRODUCTION
+
+      II.   HOW TO OBTAIN AND INSTALL THE TOOLS ON AN IBM RISC SYSTEM/6000.
+
+     III.   HOW TO COLLECT DATA FOR AN AIX PERFORMANCE PROBLEM
+
+      IV.   HOW TO SEND DATA TO IBM
+
+
+
+
+
+ I.   INTRODUCTION
+
+      This package contains a set of tools and instructions for
+      collecting the data needed to analyze a AIX performance
+      problem.  This tool set runs on AIX V6.1
+
+
+ II.  HOW TO OBTAIN AND INSTALL THE TOOLS ON AN IBM RISC SYSTEM/6000.
+
+
+      A. OBTAINING THE PACKAGE
+
+           The package will be distributed as a compressed
+           "tar" file available electronically.
+
+            From the internet:
+            ==================
+            'ftp://ftp.software.ibm.com/aix/tools/perftools/perfpmr'
+
+
+
+
+      B. INSTALLING THE PACKAGE
+
+           The following assumes the tar file is in /tmp and named
+           'perf61.tar.Z'.
+
+           a. login as root or use the 'su' command to obtain root
+              authority
+
+           b. create perf61 directory and move to that directory (this
+              example assumes the directory built is under /tmp)
+
+              # mkdir /tmp/perf61
+              # cd /tmp/perf61
+
+
+           c. extract the shell scripts out of the compressed
+                tar file:
+
+              # zcat /tmp/perf61.tar.Z | tar -xvf -
+
+           d. install the shell scripts
+
+              # sh ./Install
+
+
+
+ III. HOW TO COLLECT DATA FOR AN AIX PERFORMANCE PROBLEM
+
+
+      A. Purpose:
+
+           1. This section describes the set of steps that should be
+              followed to collect performance data.
+
+           2. The goal is to collect a good base of information that
+              can be used by AIX technical support specialists or
+              development lab programmers to get started in analyzing
+              and solving the performance problem. This process may
+              need to be repeated after analysis of the initial set
+              of data is completed and/or AIX personnel may want to
+              dial-in to the customer's machine if appropriate for
+              additional data collection/analysis.
+
+
+      B. Collection of the Performance Data on Your System
+
+           1. Detailed System Performance Data:
+
+              Detailed performance data is required to analyze and
+              solve a performance problem. Follow these steps to
+              invoke the supplied shell scripts:
+
+              NOTE:  You must have root user authority when executing
+              these shell scripts.
+
+
+                a. Create a data collection directory and 'cd' into this
+                   directory. Allow at least 12MB/processor of unused space in
+                   whatever file system is used.  Use the 'df' command
+                   to verify the filesystem has at least 30000 blocks
+                   in the 'Free' column (30000 512 byte blocks = 15MB).
+
+                   *IMPORTANT* - DO NOT COLLECT DATA IN A REMOTELY MOUNTED
+                   FILESYSTEM SINCE IPTRACE MAY HANG
+
+                   For example using /tmp filesystem:
+                       # mkdir /tmp/perfdata
+                       # cd /tmp/perfdata
+
+                b. HACMP users:
+                     Generaly recommend HACMP deadman switch interval
+                     be lengthened while performance data is being
+                     collected.
+
+                c. Collect our 'standard' PERF61 data for 600 seconds
+                    (600 seconds = 10 minutes).  Start the data collection
+                    while the problem is already occurring with the command:
+
+                     'perfpmr.sh 600'
+
+                   The perfpmr.sh shell provided will:
+                   - immediately collect a 5 second trace (trace.sh 5)
+                   - collect 600 seconds of general system performance
+                      data (monitor.sh 600).
+                   - collect hardware and software configuration
+                      information (config.sh).
+
+                   In addition, if it finds the following programs available
+                   in the current execution path, it will:
+                   - collect 10 seconds of iptrace information (iptrace.sh 10)
+                   - collect 60 seconds of filemon information (filemon.sh 60)
+                   - collect 60 seconds of tprof information (tprof.sh 60)
+
+                   NOTE:
+                   Since a performance problems may mask other
+                   problems, it is not uncommon to fix one issue and
+                   then collect more data to work on another issue.
+
+                d. Answer the questions in the text file called
+                    'PROBLEM.INFO' in the data collection directory
+                    created above.  This background information
+                    about your problem helps us better understand
+                    what is going wrong.
+
+
+ IV. HOW TO SEND THE DATA TO IBM.
+
+      A. Combine all the collected data into a single binary 'tar' file
+          and compress it:
+
+           Put the completed PROBLEM.INFO in the same directory
+           where the data was collected (ie. /tmp/perfdata in
+           the following example).  Change to the parent
+           directory, and use the tar command as follows:
+
+	   Either use: cd /tmp; perfpmr.sh -o perfdata -z pmr#.pax.gz
+	   or 
+           # cd /tmp/perfdata   (or whatever directory used
+                                  to collect the data)
+           # cd ..
+	   # pax -xpax -vw perfdata | gzip -c > pmr#.pax.gz
+
+
+      B. Submission of testcase to IBM:
+
+           Internet 'ftp' access:
+           ----------------------
+             The quickest method to get the data analyzed is
+             for the customer to ftp the data directly to IBM.
+             Data placed on the server listed below cannot be
+             accessed by unauthorized personnel.
+             Please contact your IBM representative for the
+             PMR#, BRANCH#, and COUNTRY#.  IBM uses all 3 to
+             uniquely associate your data with your
+             problem tracking record.
+
+               'ftp testcase.software.ibm.com'
+                Userid:  anonymous
+                password:  your_internet_email_address
+                           (ie. smith@austin.ibm.com)
+               'cd toibm/aix'
+               'bin'
+               'put  PMR#.BRANCH#.COUNTRY#.pax.gz'
+                  (ie. '16443.060.000.pax.gz'
+               'quit'
+
+            If the transfer fails with an error, it's possible that a file already exists by the same name
+            on the ftp server. In this case, add something to the name of the file to differentiate it from the file
+            already on the ftp site (ex. 16443.060.000.july18.pax.gz).
+
+             Notify your IBM customer representative you have
+             submitted the data.  They will then update the
+             defect report to indicate the data is available
+             for analysis.
+
+
+           Allow IBM to dial in to retrieve the data
+           -----------------------------------------
+             The second quickest option is to allow your IBM
+             representative to dial into your machine to
+             retrieve 'perfdata.tar.Z'.  They will then forward it
+             as described above.
+             The IBM representative will need a guest userid,
+             password capable of accessing the data,
+             modem telephone number, and the modem settings
+             (ie. 28800 baud, 8 bit data, 1 stop bit, no parity).
+             A phone call is the best method to pass the
+             login information to the IBM representative.
+             Do not EMAIL it via the internet or append it
+             to the PMR.
+
+
+           Submitting physical media
+           -------------------------
+             If the above options are not viable,
+             save your data to tape or diskettes and mail it
+             to IBM.
+
+              Note the following on the media label:
+
+                - the PMR# and BRANCH#
+                    (contact your local IBM service representative)
+                - the date that the data was gathered
+                - the command to be used to extract the data
+                  from the media (such as tar), including
+                  any required command flags (such as blocksize, etc)
+
+              Here's one way to put the data on a formatted diskette:
+                 'tar -cvf /dev/fd0 PMR#.BRANCH#.tar.Z
+
+
+              Mailing address for United States customers:
+              --------------------------------------------
+                IBM Corp. / Zip 9551 / Bldg 905
+                Attn: AIX Testcase Dept. H8TS
+                11400 Burnet Road
+                Austin, Texas 78758-3493 USA
+
+
+              Mailing address for World Trade customers:
+              ------------------------------------------
+                Please contact your local IBM representative for the
+                closest address.
+
+              This data will then be transferred electronically
+              to AIX Development by 'ftp'.
+              IBM Software Service in the geography should inform
+              the Austin AIX Support Center when the performance
+              data has been sent to Austin by updating the PMR.
+
+                'ftp' address:
+                      testcase.software.ibm.com
+
+                  (use the procedure for internet ftp access described above)
+

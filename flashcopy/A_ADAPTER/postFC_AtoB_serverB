@@ -1,0 +1,77 @@
+#!/bin/ksh
+
+# This script needs to be run on system B after a flashcopy creation (mkflash command)
+# When your destination is system B and the flashcopy source is system A
+
+next_step ()  {
+echo
+echo TYPE ENTER FOR NEXT STEP
+echo
+read NEXT
+}
+
+clear
+
+# Inform what is going to bo done
+echo
+echo ==============================================
+echo WHAT IS GOING TO BE DONE :
+echo ==============================================
+echo "  1) cfgmgr to detect the disks"
+echo "  2) importvg of the volume groups"
+echo "  3) change owner (oracle:dba) of the devices /dev/..."
+echo   END
+
+next_step
+
+# cfgmgr
+echo
+echo ==============================================
+echo DOING A CFGMGR TO FIND THE NEW DISKS WITH THE GOOD PVID
+echo ==============================================
+cfgmgr
+echo "... Done"
+echo 
+for i in `lsdev -Cc disk | grep 2107 | awk '{print $1}'`
+do
+echo "$i -> \c"
+lscfg -vpl $i | grep Serial
+done
+
+next_step
+
+# Importvg of the VGs
+echo
+echo ==============================================
+echo IMPORTVG OF THE VOLUME GROUPS
+echo ==============================================
+importvg_FC.sh
+
+next_step
+
+# Chown oracle:dba
+echo
+echo ==============================================
+echo DOING THE CHOWN ORACLE:DBA ON THE /dev/...
+echo ==============================================
+echo '/dev/*fcc*'
+chown -Rh oracle:dba /dev/*fcc*
+echo '/dev/*fcr*'
+chown -Rh oracle:dba /dev/*fcr*
+echo '/dev/*frs*'
+chown -Rh oracle:dba /dev/*frs*
+
+next_step
+
+echo
+echo ==============================================
+echo THE SYSTEM IS NOW READY AT THE AIX LEVEL
+echo YOU HAVE TO RUN THE SCRIPTS create_controlfile
+echo SEE readme INSIDE :
+echo   /oracle/oracle9i/admin/FCC/scripts
+echo   /oracle/oracle9i/admin/FCR/scripts
+echo   /oracle/oracle9i/admin/FCRBRN/scripts
+echo ==============================================
+echo
+echo END OF SCRIPT
+echo

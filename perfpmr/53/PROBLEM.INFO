@@ -1,0 +1,80 @@
+Questions that help IBM diagnose the problem:
+=============================================
+
+Can you append more detail on the simplest,
+  repeatable example of the problem?
+
+  ie.
+    Can the problem be demonstrated with the execution
+     of a specific command or sequence of events?
+      ie. 'ls /slow/fs' takes 60 seconds or
+          binary mode 'ftp' put from one specific
+            client only runs at 20 Kbytes/second.
+          etc.
+    If not, describe the least complex example of
+      the problem.
+    Is the execution of AIX commands also slow?
+
+Is this problem a case of something that had
+  worked previously (ie. before a upgrade) and
+  now does not run properly?
+  If so:
+    Describe any other recent changes?
+     ie. workload, number of users, networks,
+         configuration, etc.
+
+Or is this a case of a application/system/hardware
+  that is being set up for the first time?
+  If so:
+    What performance is expected?
+    What is the expectation based on?
+
+Is the slow performance intermittent?
+  Is there any pattern to the slow behavior?
+  Does it get slow, but then disappear for a while?
+  Does it get slow at certain times of day or
+    relation to some specific activity?
+  About how long does the period of slow performance
+    before it returns to normal?
+  Is it slow when the system is otherwise idle?
+    (ie. capacity vs. elapsed time)
+  What is the CPU utilization when the system is
+    idle after a period of slow performance
+     (use 'vmstat 1')?
+     (perhaps something is looping)
+
+Are all applications/commands/users slow or just
+  some?
+
+What aspect is slow?
+   ie.  Time to echo a character,
+        Elapsed time to complete the transaction,,,
+
+Does rebooting the system make the problem disappear
+for a while?
+ (ie. a resource may be consumed but not freed back up)
+ If so, about how long until the problem reappears?
+
+If client/server, can the problem be demonstrated
+  when run locally on the server (network vs.
+  server issue)?
+
+Does the problem disappear when the application
+  is run from the system console?
+
+If client/server, from the client how long does a
+  'ping server_ip_address' take?
+  (use the server_ip_address to exclude nameserver
+   and other variables.  ie. 'ping 129.35.33.22')
+
+If network related, please describe the
+  network segments including bandwidth
+  (ie. 10mbit/sec, 9600 baud,,) and
+  routers between the client and server.
+
+What vendor applications are on the system and
+  are they involved in the perf issue (ie. Oracle,
+  SAP,,?)?
+
+What is the version/release/level of the vendor
+  applications?

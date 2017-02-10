@@ -1,0 +1,119 @@
+#!/bin/ksh
+
+####################################################################
+# dailycheck
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V9.01 -  September, 22nd 2009
+#  -> First release
+
+####################################################################
+# check if a DAILY nmon is running on every  node
+#
+####################################################################
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+REP_SCRIPT=`dirname $0`
+
+. $REP_SCRIPT/fabtools.conf
+
+#-----------------------------------------------------------
+# USAGE
+
+SCRIPT=$0
+
+function usage
+{
+  echo
+  echo "usage : $SCRIPT"
+  echo "        [-h]   -> displays this help" 
+  echo 
+  echo "        Just run it."
+
+  echo
+}
+
+#-----------------------------------------------------------
+# TEST CASE
+if [ $# -gt 1 ]
+then
+  usage
+  exit 1
+fi
+
+if [ $# -eq 1 ]
+then
+  case $1 in
+   -h)
+     usage
+     exit 0
+   ;;
+
+   *)
+     usage
+     exit 1
+   ;;
+  esac
+fi
+
+
+#-----------------------------------------------------------
+# Main Part
+
+
+LIST_OF_NODES=""
+
+# create the fnmoncheck_date.txt file
+echo
+echo "running fnmoncheck in background to find node without DAILY nmon running"
+OUTFILE=`$REP_SCRIPT/fnmoncheck -c | grep fnmoncheck | awk -F: '{print $2}'`
+echo "done"
+
+# Check for nodes without any daily nmon running (LIST_OF_NODES contains these nodes)
+for i in $NODES
+do
+   grep -w $i $OUTFILE >/dev/null 2>&1
+   if [ $? -ne 0 ] # DAILY is NOT running on $i node
+   then
+     if [ X$LIST_OF_NODES = "X" ]
+     then
+       LIST_OF_NODES="$i" 
+     else
+       LIST_OF_NODES="$LIST_OF_NODES,$i" 
+     fi
+   fi
+done
+
+if [ X$LIST_OF_NODES = "X" ]
+then
+  echo 
+  echo "DAILY nmon is running on ALL nodes"
+  echo "exiting"
+  echo
+  exit 0
+else 
+  echo
+  echo "DAILY nmon is not running on the following nodes:"
+  echo $LIST_OF_NODES
+
+  # Calculate the COUNT parameter for the NMON
+  HOUR=`date +%H`
+  DUR_HOUR=`expr 23 - $HOUR`
+  DUR_HOUR=`expr $DUR_HOUR \* 60` # to have it in minute
+
+  MINUTE=`date +%M`
+  DUR_MINUTE=`expr 60 - $MINUTE`
+  DUR_MINUTE=`expr $DUR_MINUTE + $DUR_HOUR` # overall duration in minutes
+  DUR_SECOND=`expr $DUR_MINUTE \* 60` # overall duration in seconds
+
+  FNMON_COUNT=`expr $DUR_SECOND / $DAILY_SECOND`
+  FNMON_COUNT=`expr $FNMON_COUNT + 1` # just to finish after midnight
+
+  # Start the new DAILY nmon on these nodes
+  $REP_SCRIPT/fnmon -s $DAILY_SECOND -c $FNMON_COUNT -r daily_fnmon -novi -daily +getinfo -script -nodes $LIST_OF_NODES
+  echo
+fi

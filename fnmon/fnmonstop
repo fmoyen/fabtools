@@ -1,0 +1,249 @@
+#!/bin/ksh
+
+####################################################################
+# Fast Nmon stop (fnmonstop)
+# (To be used with the fnmon tool)
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V13.2 -  April, 26th 2013
+#  -> Added the test to see if PRE/POST/SAMPLE SCRIPTS are empty or not (as USE_SCRIPT is used for the 3 SCRIPTS)
+#     So this allow to have a POST_SCRIPT without PRE/SAMPLE SCRIPTS for example
+# Release : V13.1 -  April, 23rd 2013
+#  -> change the header RUN_ by RUN__ (to prevent problem when the runname (-r) is something like "RUN_DE_REF"
+# Release : V12.01 -  January, 25th 2012
+#  -> Bug correction to allow the script to work when stopping a daily fnmon running
+# Release : V11.01 -  November, 9th 2011
+#  -> bug correction if fnmonstop was run onto the piana partition (where the nmon is not running). REP_RESULT was not correct.
+#  -> Added the POST_SCRIPT 
+# Release : V10.01 -  october, 21st 2010
+#  -> added the -h option
+# Release : V9.02 -  November, 26th 2009
+#  -> modification to deal with the daily `date %d%m%y` directory
+# Release : V9.01 -  March, 10th 2009
+#  -> Now if OK, there is no rename of the RUN_ directory to OK_directory
+#  -> Possible not to precise OK when it is OK. OK is the default.
+# Release : V2.3 -  October, 15th 2008
+#  -> Using the Signal USR2 to kill the nmon processes.
+# Release : V2.2 -  April, 23rd 2008
+#  -> Added the DAILY directory for daily fnmon
+# Date : November, 17th 2006
+# Release : V2.1  -  June, 28nd 2007
+#   -> Adding the filemon option
+# Release : V1.6
+
+####################################################################
+# Stop all the nmon processes launched by the fnmon tool
+# Stop all the at jobs launched by the fnmon tool
+# move the RUN directory to a BAD directory
+
+####################################################################
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 11`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+#-----------------------------------------------------------
+# USAGE
+
+SCRIPT=$0
+
+function usage
+{
+  echo
+  echo "usage : $SCRIPT [OK]|BAD directory_result"
+  echo "        [OK]|BAD         -> flag if the run is valid (OK) or not (BAD)"
+  echo "        directory_result -> the results directory that you want to stop the nmon collection"
+  echo "        [-h]             -> displays this help"
+  echo
+  echo "        exemples:"
+  echo "        fnmonstop RUN__102110_111735_daily_fnmon"
+  echo "        fnmonstop BAD RUN__101810_185721_fabtest"
+
+  echo
+}
+
+
+#-----------------------------------------------------------
+# VARIABLES
+
+if [ $# -ne 0 ] && [ $1 = "-h" ]
+then 
+  usage
+  exit 1
+fi
+
+if [ $# -eq 2 ]
+then
+  MODE=$1
+  REP_INPUT=$2
+else 
+  if [ $# -eq 1 ]
+  then
+    MODE=OK
+    REP_INPUT=$1
+  else
+    usage
+    exit 1
+  fi
+fi
+
+REP_RESULT="$REP_RACINE/fnmon/$REP_INPUT"
+
+BAD_REP="$REP_RACINE/fnmon/${MODE}__`echo $REP_INPUT | awk -F "RUN__" {'print $2'}`"
+
+REP_SAMPLE="$REP_RESULT/sample"
+REP_SAMPLE_AT="$REP_SAMPLE/at"
+
+REP_TPROF="$REP_RESULT/tprof"
+REP_TPROF_AT="$REP_TPROF/at"
+
+REP_FILEMON="$REP_RESULT/filemon"
+REP_FILEMON_AT="$REP_FILEMON/at"
+
+
+#-----------------------------------------------------------
+
+
+echo --------------------------------------
+echo Stop all the nmon running for $REP_RESULT
+echo $EchoParams "  \c"
+
+for i in $NODES
+do
+  echo $EchoParams "$i \c"
+  for j in `$RSH ${i} ps -ef | grep $REP_INPUT | grep -v grep | grep -v $0 | awk {'print $2'}`
+  do 
+    $RSH ${i} "kill -USR2 $j"
+  done
+done
+echo
+
+
+#-----------------------------------------------------------
+# START OF THE ADDITIONAL POST_SCRIPT IF ONE EXISTS
+
+
+if [ $USE_SCRIPT -eq 1 ]
+then
+  if [ `echo $POST_SCRIPT | wc -c` -ne 1 ]
+  then
+    if [ $ONCE_EACH == "ONCE" ]
+    then
+      echo
+      echo "###################################################"
+      echo Starting $POST_SCRIPT onto node $SCRIPT_NODE
+      echo "###################################################"
+      echo
+      cmd="$RSH $SCRIPT_NODE $POST_SCRIPT"
+      eval $cmd &
+
+    else
+      echo
+      echo "###################################################"
+      echo Starting $POST_SCRIPT onto every nodes
+      echo "###################################################"
+      echo
+      for i in $NODES
+      do
+        echo --------------------------------------
+        echo Start on node $i the command
+        cmd="$RSH ${i} $POST_SCRIPT"
+        eval $cmd &
+      done
+    fi
+  fi
+fi
+
+#-----------------------------------------------------------
+
+if [ $USE_SAMPLE -eq 1 ]
+then
+  echo --------------------------------------
+  echo Delete all the SAMPLE at jobs for $REP_RESULT
+
+  for i in $NODES
+  do
+    echo "$i"
+    for j in `cat $REP_SAMPLE_AT/${i}_at_jobs.txt | awk {'print $2'}`
+    do
+      $RSH ${i} "at -r $j 2>/dev/null"
+    done
+    echo
+  done
+  echo
+fi
+
+#-----------------------------------------------------------
+
+if [ $USE_TPROF -eq 1 ]
+then
+  echo --------------------------------------
+  echo Delete all the TPROF at jobs for $REP_RESULT
+
+  for i in $NODES
+  do
+    echo "$i"
+    for j in `cat $REP_TPROF_AT/${i}_at_jobs.txt | awk {'print $2'}`
+    do
+      $RSH ${i} "at -r $j 2>/dev/null"
+    done
+    echo
+  done
+  echo
+fi
+
+#-----------------------------------------------------------
+
+if [ $USE_FILEMON -eq 1 ]
+then
+  echo --------------------------------------
+  echo Delete all the FILEMON at jobs for $REP_RESULT
+
+  for i in $NODES
+  do
+    echo "$i"
+    for j in `cat $REP_FILEMON_AT/${i}_at_jobs.txt | awk {'print $2'}`
+    do
+      $RSH ${i} "at -r $j 2>/dev/null"
+    done
+    echo
+  done
+  echo
+fi
+
+#-----------------------------------------------------------
+
+if [ $MODE = "BAD" ]
+then
+  echo --------------------------------------
+  echo Move the directory $REP_RESULT to $BAD_REP
+  mv $REP_RESULT $BAD_REP
+  ls -lad $BAD_REP
+  echo
+fi
+
+#-----------------------------------------------------------
+
+echo --------------------------------------
+echo "Sync'ing ..."
+echo $EchoParams "  \c"
+
+for i in $NODES
+do
+  echo $EchoParams "$i \c"
+  $RSH $i sync
+done
+echo

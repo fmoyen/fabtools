@@ -1,0 +1,218 @@
+#!/bin/ksh
+
+####################################################################
+# ErrptMon
+# Errpt monitoring into a single terminal window. 
+# If a error occures on one of the NODES, the errpt entry will be
+# displayed in the TERM.
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V9.01 -  March, 19th 2009
+#   -> Modified the help function
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 10`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+TIME=900
+OK=0
+
+#-----------------------------------------------------------
+# Analyse the parameters of the scripts
+
+PARAM=$*
+NBRE_PARAM=$#
+NBRE_OPTION=$NBRE_PARAM
+SCRIPT=$0
+
+#-----------------------------------------------------------
+# USAGE AND HELP FUNCTIONS
+
+function usage
+{
+   COMMAND=`basename $SCRIPT`
+   echo
+   echo "usage : $COMMAND start|stop [-t seconds]"
+   echo
+   echo "type $COMMAND -h for complete informations."
+   echo
+}
+
+function help
+{
+   usage
+   echo "  start: start the errpt monitoring tool"
+   echo "  stop : stop the errpt monitoring tool"
+   echo "  -t seconds : Number of seconds to wait between two errpt scans"
+   echo "               The default is $TIME seconds" 
+   echo
+}
+
+#-----------------------------------------------------------
+# AT LEAST ONE PARAMETER IS REQUIRED (The start or stop)
+
+if [ $# -eq 0 ]
+then
+  usage
+  exit 1
+fi
+
+#-----------------------------------------------------------
+# Analyse of the paramaters
+
+
+COUNT=1
+while [ $COUNT -le $NBRE_OPTION ]
+do
+   case $1 in
+   -h)
+      help
+      exit 0
+   ;;
+
+   start|stop)
+      ACTION=$1
+
+      if [ $OK -eq 1 ]
+      then
+        usage
+        exit 1
+      fi
+
+      OK=1
+   ;;
+
+    -t)
+    FIRST_CHAR=`echo $2 | cut -c 1`
+    if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" ]
+    then
+       usage
+       exit 1
+    fi
+
+    TIME=$2
+
+    NBRE_OPTION=`expr $NBRE_OPTION - 1`
+    shift 1
+   ;;
+
+
+   *)
+     usage
+     exit 1
+   ;;
+
+   esac
+
+   COUNT=`expr $COUNT + 1`
+   shift 1
+
+done
+
+# If there is no start or stop option
+if [ $OK -eq 0 ]
+then
+  usage
+  exit 1
+fi
+
+
+# ---------------------------------------------------------
+# START START START START START START START START
+
+if [ $ACTION = "start" ]
+then
+
+  for i in $NODES
+  do
+    rsh $i $REP_SCRIPT/../errpt/errptmon_local.sh $TIME &
+  done
+  
+  echo
+  echo "################################"
+  echo ERRPT MONITORING CONSOLE STARTED
+  echo "################################"
+  echo NODES: $NODES
+  echo "################################"
+  echo
+
+# Test if the monitoring is running on each node
+#  while true
+#  do
+    sleep 1
+    echo
+    echo Waiting for errptmon to start on each node 
+    sleep 5
+    echo
+    date
+    echo "################################"
+    echo ERRPT MONITORING CONSOLE CHECKING
+    echo "################################"
+    echo "Errpt Monitoring running on nodes: \c"
+    for i in $NODES
+    do
+      if [ `rsh $i "ps -ef | grep errptmon_local | grep ksh | grep -v grep | wc -l"` -eq 1 ] 
+      then
+        echo "$i \c"
+      else
+        echo
+        echo "PRB WITH NODE : $i NEED TO BE CHECKED MANUALLY"
+      fi
+    done
+
+    echo
+    echo "################################"
+    echo
+#    sleep 300
+
+#  done
+
+
+
+# ---------------------------------------------------------
+# STOP STOP STOP STOP STOP STOP STOP STOP STOP STOP 
+
+else
+  echo
+  echo "################################"
+  echo ERRPT MONITORING CONSOLE STOPPED
+  echo "################################"
+  echo "on nodes : \c"
+
+  for i in `ps -ef | grep errptmon_local | grep rsh | grep -v grep | awk '{print $2}'`
+  do
+  kill $i
+  done
+
+  for i in $NODES
+  do
+    ps -ef | grep errptmon_local | grep rsh | grep $i | grep -v grep >/dev/null 2>&1
+    if [ $? -eq 1 ]
+    then  
+      echo "$i \c"
+    else
+      echo
+      echo "PRB WITH NODE : $i"
+      echo "NEED TO BE CHECKED MANUALLY"
+    fi
+  done
+
+  echo
+  echo "################################"
+  echo
+
+fi
+

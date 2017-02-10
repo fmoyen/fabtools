@@ -1,0 +1,125 @@
+#!/bin/ksh
+
+####################################################################
+# make_ALL_FC_scripts.sh
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V1.10 -  September, 2nd 2008
+#  -> improve the design of the tool
+
+####################################################################
+# Main Program to Generate the FlashCopy scripts
+#
+####################################################################
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 12`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+#-----------------------------------------------------------
+# Variables
+
+WORKDIR=$REP_TOOLS/mkFCscripts
+LOOP=1
+source=""
+target=""
+
+while [ $LOOP -eq 1 ] 
+do
+  clear
+  echo "Please give me:"
+  echo "---------------"
+  echo
+  echo "   1) the source name : $source"
+  echo "   2) the target name : $target"
+  echo
+  echo "And then:"
+  echo "---------"
+  echo "   s) start the scripts generation"
+  echo
+  echo "Or:"
+  echo "---"
+  echo "   q) quit the program"
+  echo 
+  echo " choice: \c"
+  read answer
+  echo
+
+  case $answer in
+
+  1)
+   echo "source name : \c" 
+   read source
+
+   if [ -z $REP_TOOLS/
+  ;;
+
+     
+  2)
+   echo "target name : \c" 
+   read target
+  ;;
+
+
+  s|S)
+   if [ X$source = "X" ]
+   then 
+     echo "please provide the source name"
+     echo "hit the enter key"
+     read bidon
+   else
+     if [ X$target = "X" ]
+     then
+       echo "please provide the target name"
+       echo "hit the enter key"
+       read bidon
+     else
+       echo "scripts generation running ... " 
+       LOOP=0
+     fi
+   fi
+  ;;
+
+
+  q|Q)
+   echo "Exiting ..."
+   exit 0
+  ;;
+
+  *)
+   echo "Invalide answer ..."
+   echo "hit the enter key"
+   read bidon
+  ;;  
+
+  esac
+done
+
+exit 1
+
+liste="$source $target"
+
+for i in $liste
+do
+  for j in $liste
+  do
+    if [ $i != $j ]
+    then 
+      echo "$i -> $j"
+      ./make_FC_scripts.sh $i $j
+    fi
+  done
+done

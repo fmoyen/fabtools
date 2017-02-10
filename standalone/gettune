@@ -1,0 +1,159 @@
+#!/bin/ksh
+
+####################################################################
+# getinfo
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+# Release : V11.01 - May 17th, 2011
+# Autonomous script that can be run outside the fabtools environment
+
+####################################################################
+# Get all the tunables informations
+
+####################################################################
+
+
+#-----------------------------------------------------------
+# USAGE
+
+function usage
+{
+   echo
+   echo "usage : $0 [ result directory ]"
+   echo
+   echo "        just run it. You'll find the result file into $REP_RESULT"
+   echo "          or"
+   echo "        Give the directory and you'll fint the result file into it"
+   echo 
+   echo "        -h To display this help !"
+   echo
+   exit 1
+
+}
+
+#-----------------------------------------------------------
+# VARIABLES
+
+REP_RESULT=/tmp
+
+case $# in
+   0)
+   REP_RESULT=/tmp
+   ;;
+
+   1)
+   if [ $1 == "-h" ]
+   then
+      usage
+   else
+      REP_RESULT=$1
+   fi
+   ;;
+
+   *)
+   usage
+   ;;
+
+esac
+
+FILE_RESULT="$REP_RESULT/`hostname`_`date +%d%b%y_%H%M%S`.txt"
+
+#-----------------------------------------------------------
+function todo 
+{
+echo -------------------------------------- >> $FILE_RESULT
+echo $* >> $FILE_RESULT
+echo $*
+echo -------------------------------------- >> $FILE_RESULT
+eval $* >> $FILE_RESULT 2>> $FILE_RESULT
+echo >> $FILE_RESULT
+}
+
+#-----------------------------------------------------------
+# Create the result directory
+echo
+echo Creation of the directory $REP_RESULT if needed
+mkdir -p $REP_RESULT 2>/dev/null
+
+echo Creation of the file $FILE_RESULT
+touch $FILE_RESULT
+echo
+
+#-----------------------------------------------------------
+# START COLLECTING THE INFORMATION
+
+echo START COLLECTING THE INFORMATIONS FOR `hostname`
+echo
+
+AIXLEVEL=`oslevel -s | cut -c 1-2`
+
+#-----------------------------------------------------------
+# START OF FILE
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo START OF FILE - START OF FILE - START OF FILE >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo >> $FILE_RESULT
+
+
+todo "uname -a"
+todo "lsattr -El sys0"
+todo "oslevel -s"
+todo "instfix -i | egrep 'ML|SP'"
+todo "instfix -i | grep ML"
+todo "instfix -i | grep SP"
+todo "emgr -l"
+todo "ulimit -a"
+if [ $AIXLEVEL != "53" ]
+then
+   todo "schedo -FL"
+   todo "vmo -FL"
+   todo "no -FL"
+   todo "ioo -FL"
+   todo "nfso -FL"
+   todo "schedo -Fa"
+   todo "vmo -Fa"
+   todo "no -Fa"
+   todo "ioo -Fa"
+   todo "nfso -Fa"
+else
+   todo "schedo -L"
+   todo "vmo -L"
+   todo "no -L"
+   todo "ioo -L"
+   todo "nfso -L"
+   todo "schedo -a"
+   todo "vmo -a"
+   todo "no -a"
+   todo "ioo -a"
+   todo "nfso -a"
+fi
+
+todo "cat /etc/tunables/lastboot"
+
+
+#-----------------------------------------------------------
+# END OF FILE
+echo >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo END OF FILE - END OF FILE - END OF FILE >> $FILE_RESULT
+echo >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+echo -------------------------------------- >> $FILE_RESULT
+
+
+#-----------------------------------------------------------
+# Reminder of the directory name
+
+echo --------------------------------------
+echo "Remind you the RESULT directory/file name"
+echo $FILE_RESULT
+echo

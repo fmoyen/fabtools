@@ -1,0 +1,145 @@
+#!/bin/ksh
+#set -x
+
+####################################################################
+# nim_mksysb
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V1.1 -  October, 4th 2008
+#  -> Use of the NIM_DIR directory
+# Release : V1.0 -  October, 4th 2008
+#  -> Initial script
+
+#
+# nim_mksysb [-h] [-r] [-n] [-l] [-m 'machines to get mksysb from']
+# get mksysb from each client machine specified with -m. If no
+# machines specified, get mksysb from ALL machines. -r flag says
+# remove oldest existing mksysb for the machines being backed up.
+# use -n no_make flag with -r to remove a generation of mksysb,
+# without creating a new one.
+# Added subdirectory for each nim_machine
+# Added help (-h)
+# Added list (-l)
+# Added MAX_BACKUPS (save up to MAX_BACKUPS, then erase oldest) 
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 12`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+
+. $REP_SCRIPT/fabtools.conf
+
+
+### Your customizations begin here ###
+
+# Save up to MAX_BACKUPS per server, then remove oldest (space saving)
+# The "-r" option will override and remove the oldest.
+MAX_BACKUPS=100
+
+### End customizations ###
+
+# Initialize
+remove_old=0
+machine_list=
+no_make=0
+MKSYSB_DIR=$NIM_DIR/mksysb
+
+# Get Command Line Arguments
+while getopts hlnrm: option
+do
+  case $option in
+    h) echo " " 
+    echo "Purpose: automate system backup(s) using NIM"
+    echo " " 
+    echo "Syntax: `basename $0` [-h] [-r] [-n] [-l] [-m 'machines to get mksysb from']"
+    echo "\t-h = help"
+    echo "\t-r = remove the oldest mksysb image"
+    echo "\t-l = list NIM machines and mksysb images"
+    echo "\t-n = no backup (used for testing or to remove oldest mksysb)"
+    echo "\t-m = NIM machine name to backup. Default = backup all"
+    echo ""
+    exit;;
+
+    l) echo "\n## NIM machines ##"
+    lsnim -c machines | awk ' !/^master/ { print $1 } '
+    echo "\n## NIM mksysb Resources ##"
+    lsnim -t mksysb | awk ' { print $1 }'
+    echo " "
+    exit;;
+
+    m) machine_list="$OPTARG";;
+    n) no_make=1;;
+    r) remove_old=1;;
+
+  esac
+
+done
+
+
+# if machine_list is null at this point, set it to ALL clients
+if [ -z "$machine_list" ]; then 
+  machine_list=`lsnim -c machines | awk ' !/master/ { print $1 }'`
+fi
+
+# Backup machine(s)
+echo "Machine list is $machine_list \n"
+
+for m in $machine_list
+do
+
+  echo "### Creating NIM mksysb Resource for $m ###" 
+  date
+
+  if [ ! -d $MKSYSB_DIR/$m -a $no_make -eq 0 ]; then
+    echo "Creating new directory: $MKSYSB_DIR/$m"
+    mkdir -p $MKSYSB_DIR/$m
+  fi
+
+  cd $MKSYSB_DIR/$m 2>/dev/null 
+
+  n_backups=$(ls $m* 2>/dev/null |wc -l )
+  if [ $remove_old -eq 1 ] || [ $n_backups -ge $MAX_BACKUPS ]; then
+    oldest=$(ls -lt $m* | tail -1 | awk '{print $9}')
+    if [ ! -z $oldest ]; then
+      echo Removing oldest file and nim resource: $oldest
+      nim -o remove $oldest
+      /usr/bin/rm $oldest
+    else   
+      echo "Can not remove oldest file. No files to remove. $oldest"
+    fi
+  fi
+
+# if no_make is null, go ahead and make the mksysb
+  if [ $no_make -eq 0 ]; then 
+
+    filename="$m"_mksysb_`date +%d%b%y_%H%M%S`
+
+    echo New file and nim resource is $filename
+    echo Machine to backup is $m
+
+    echo nim -o define -t mksysb -aserver=master -amk_image=yes \
+    -alocation=$MKSYSB_DIR/$m/$filename \
+    -asource=$m $filename
+
+    time nim -o define -t mksysb -aserver=master -amk_image=yes \
+    -alocation=$MKSYSB_DIR/$m/$filename \
+    -asource=$m $filename
+
+  else
+    echo "Script invoked with no_make option. Backup of $m was not made."
+  fi
+  echo "-----"
+
+done
+

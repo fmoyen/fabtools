@@ -1,0 +1,7 @@
+logfile /var/tmp/screenlog.Win%n.%d%M20%y.%0c:%s
+logfile flush 2
+logtstamp on
+defscrollback 500
+hardstatus on
+hardstatus alwayslastline
+hardstatus string "%H - %w%=%d/%m %c"

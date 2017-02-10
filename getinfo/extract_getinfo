@@ -1,0 +1,171 @@
+#!/bin/ksh
+
+####################################################################
+# extract_getinfo
+# extract the result of a specific command from a getinfo report
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+# Release : V13.01 - May 14th, 2013
+#   - Initial release
+
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 16`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+
+#-----------------------------------------------------------
+# USAGE
+
+function usage
+{
+   echo
+   echo "usage : $0 -f <getinfo_result_file> -c <command to extract>"
+   echo
+   echo "        You'll find the result file into $REP_RESULT"
+   echo 
+   echo "        -h To display this help !"
+   echo
+   exit 1
+
+}
+
+#-----------------------------------------------------------
+# VARIABLES
+
+REP_RESULT=$REP_TOOLS/getinfo
+PARAM=$*
+NBRE_PARAM=$#
+NBRE_OPTION=$NBRE_PARAM
+OKf=0
+OKc=0
+
+#-----------------------------------------------------------
+# MAIN
+
+
+COUNT=1
+while [ $COUNT -le $NBRE_OPTION ]
+do
+   case $1 in
+   -h)
+      usage
+      exit 0
+   ;;
+
+   -f)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" ]
+      then
+         usage
+         exit 1
+      fi
+
+      GETINFO_FILE=$2
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKf=1
+   ;;
+
+   -c)
+      FIRST_CHAR=`echo $2 | cut -c 1`
+      if [ X$FIRST_CHAR = "X" -o X$FIRST_CHAR = X"-" ]
+      then
+         usage
+         exit 1
+      fi
+
+      COMMAND=$2
+
+      NBRE_OPTION=`expr $NBRE_OPTION - 1`
+      shift 1
+      OKc=1
+   ;;
+
+
+   *)
+      usage
+      exit 1
+   ;;
+   esac
+
+   COUNT=`expr $COUNT + 1`
+   shift 1
+done
+
+# If it's missing one of the parameters -f or -c
+if [ $OKf -eq 0 -o $OKc -eq 0 ]
+then
+   usage
+   exit 1
+fi
+
+CommandName=""
+
+for i in $COMMAND # Suppress all space character from COMMAND to build to output filename
+do
+  if [ $i != "/" ]
+  then
+    CommandName="${CommandName}_$i"
+  fi
+done
+
+CommandName=`echo $CommandName | sed "s/\//%/g"` # Suppress all "/" character from COMMAND to build to output filename
+
+FILE_RESULT="$REP_RESULT/${GETINFO_FILE}_${CommandName}.txt"
+rm $FILE_RESULT 2>/dev/null
+
+WriteToFile=0
+CountMarker=0
+echo
+
+
+while read line
+do
+  if [ "$COMMAND" = "$line" ]
+  then
+    WriteToFile=1
+  fi
+
+  if [ $WriteToFile -eq 1 ]
+  then
+    echo "$line" >> $FILE_RESULT
+    if [ "$line" = "--------------------------------------" ] 
+    then
+      if [ $CountMarker -eq 0 ] # first marker, We remember and continue
+      then
+        CountMarker=1
+      else
+        if [ $CountMarker -eq 1 ] # second marker, We stop
+        then
+          CountMarker=2
+          WriteToFile=0
+        fi
+      fi
+    fi
+  fi
+  
+done < $REP_RESULT/$GETINFO_FILE
+
+
+#-----------------------------------------------------------
+# Reminder of the directory name
+
+echo
+echo --------------------------------------
+echo "Remind you the RESULT directory/file name"
+echo $FILE_RESULT
+echo

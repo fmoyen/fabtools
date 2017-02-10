@@ -1,0 +1,10 @@
+# MACHINES VG
+#--------------------------------------
+DB2REPORT reportdata
+DB2REPORT reportlogsvg
+BO3 bo13applivg
+BO3 filestorevg
+DB2CMS cmsdatavg
+DB2CMS cmslogsvg
+BO4 bo24applivg
+DB2PE datavg

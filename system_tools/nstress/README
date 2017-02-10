@@ -1,0 +1,210 @@
+
+The nstress tools by Nigel Griffiths (and friends)
+
+Purpose is to Stress Test your pSeries/AIX
+Why?
+
+ - Soak testing = check a new machine/disk to remove early life failures
+ - Prove performance of machine upgrades or alternative disk configurations
+ - Learn performance monitoring and tuning, for example I run a 
+	Performance Tuning Master Class and need to quick set up 
+	many different workloads and problems to be solved. 
+	With a 20 line shell script and these tools I don
+	't have to spend a week of setup time.
+
+	ncpu  - hammers the CPUs (can be slowed down to use a percentage)
+
+	ndisk - hammers  the disks (can be slowed down to use a percentage)
+	ndiskaio - same as ndisk but does Asynchronous I/O too.
+	ndiskmio - same as ndisk but uses Modular IO AIX Expansion pack library
+		it is assumed this is installed
+
+	nmem - hammers or touches memory
+
+	nipc - tests shared memory, semaphores and shared messages - take 1 CPU
+
+	nlog - generates output like error messages
+
+	nfile - creates, writes and deletes files to push the JFS log hard
+
+	ipctest - Manually test IPC
+
+createfs.sh
+	Script to create the filesystems used by the below scripts
+	- You WILL need to edit this
+
+dbstart.sh
+	Script to start a fake database RDBMS 
+	- will need tuning for your machine power 
+
+webstart.sh
+	Script to start a fake webserver 
+	- will need tuning for your machine power 
+
+README
+	this file
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Note: Most commands now have the following options
+
+	-o This allows the process to rename itself so that it looks
+		like something else when it is running. For examplea database.
+		This HAS to be the LAST option on the line
+		This also fools programs like ps and nmon
+		I call the masquerading.
+
+	-z This cause the program to not run flat out and so behave like a 
+		user driven command. This is performed at the millisecond level
+		and is quick effective.
+
+	-s This specifies the maximum time in second to run.
+		ALWAYS use this to make sure the programs stop, otherwise
+		you can slow down a machine forever (or reboot), also if you 
+		"over cook" the workload by starting too many programs and 
+		the machine stops responding - you can at least just wait for 
+		the timeout for recovery to happen (better than a reboot).
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Warrentee: none
+	Its strickly at your own risk.
+	Tested on AIX 5L - should work on AIX 4 too.
+	If you run these as a regular user - no harm can be done.
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Warning:
+	Note, ncpu running as root will try to boost its priority.
+	This will effectively lock out an entire CPU(s) (if the slowing 
+		down options are not used).
+	Which can be a good thing, if that is what you want.
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Feedback to me at nag@uk.ibm.com
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Usage: ncpu version 8.9 hammers the cpu(s)
+Note: root users get a priority boost = effectively removes the CPU(s)
+
+Hint hammer CPU mode: ncpu -p procs [-z percent] [-s secs] [-h secs] [-o "cmd"]
+	-p procs   = number of copies of cpu to start (max=256)
+	-z percent = Snooze percent - time spent sleeping (default 0)
+	-s seconds = Seconds maximum run time (default no limit)
+	-h seconds = Seconds to sleep after each second of run time
+	-o "cmd" = Other command - pretend to be this other cmd when running
+		Must be the last option on the line
+
+Hint CPU counter mode: ncpu -c
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Usage: ndisk version 5.9
+Create File for a disk test
+ndisk   -C <MB>     create a file of MB megabytes called tempfile_nMB
+
+Complex Disk tests - sequential or random read and write mixture
+ndisk   -S          Seqential Disk I/O test (file or raw device)
+        -R          Random    Disk I/O test (file or raw device)
+
+        -t <secs>   Timed duration of the test in seconds (default 5)
+
+        -f <file>   use "File" for disk I/O (can be a file or raw device)
+        -f <list>   use separated list of filenames (max 16) [separators :,+]
+     			example: -f f1,f2,f3  or -f /dev/rlv1:/dev/rlv2
+        -F <file>   <file> contains list of filenames, one per line
+        -M <num>    Mutliple processes used to generate I/O
+        -s <size>   file Size, use with K, M or G (mandatory for raw device)
+			example -s 256M   or   -s 4G
+        -r <read%> Read percent min=0,max=100 (default 80 =80%read+20%write)
+			example -r 50 (-r 0 = write only, -r 100 = read only)
+        -b <size>   Block size, use with K, M or G (default 4KB) 
+        -O <size>   first byte offset use with K, M or G (times by proc#)
+        -b <list>   or use a colon separated list of block sizes (536876292 max)
+			example -b 512:1k:2K:8k:1M:2m
+        -q          flush file to disk after each write (fsync())
+        -Q          flush file to disk via open() O_SYNC flag
+        -i <MB>     Use shared memory for I/O MB is the size(max=536876100 MB)
+        -v          Verbose mode = gives extra stats but slower
+        -l          Loging disk I/O mode = see *.log but slower still
+        -o "cmd"  Other command - pretend to be this other cmd when running
+                        Must be the last option on the line
+        -K num      Shared memory key (default 0xdeadbeef) allows multiple programs
+        -p          Pure = each Sequential thread does read or write not both
+        -P file     Pure with separate file for writers
+        -z percent  Snooze percent - time spent sleeping (default 0)
+
+Asynchronous I/O tests (AIO)
+        -A         AIO  use -S/-R, -f/-F and -r, -M, -s, -b to determine I/O types
+		(JFS file or raw device)
+        -x <min>   minimum outstanding Async I/Os (min=0 and min<max)
+        -X <max>   maximum outstanding Async I/Os (max=1024)
+     see Above -f <file>  -s <size>   -R <read%>  -b <size>
+
+For example:
+	ndiskaio -C 16
+	ndiskaio -f bigfile -S -r100 -b 4096:8k:64k:1m -t 600
+	ndiskaio -f bigfile -R -r75 -b 4096:8k:64k:1m -q
+	ndiskaio -F filelist -R -r75 -b 4096:8k:64k:1m -M 16
+	ndiskaio -F filelist -R -r75 -b 4096:8k:64k:1m -M 16 -l -v
+	ndiskaioa for Asynch compiled in version
+	ndiskaioa -A -F filelist -R -r50 -b 4096:8k:64k:1m -M 16 -x 8 -X 64
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Useage: nmem version 2.0
+Hint: scans memory
+	nmem -m Mbytes [-s MaxSeconds] [-z percent][-o "cmd"]
+		Mbytes     = Size of RAM to use
+		MaxSeconds = maximum time of the test
+		percent    = Snooze percent (process sleeps for the percentage of the time
+
+	Memory speed test with increasing memory sizes
+	- may highlight CPU cache sizes
+	nmem -c [-s MaxSeconds]
+		MaxSeconds = maximum time of the test (default 60)
+Example:
+	nmem -c -s 1000          	 - cycle through tests (maximum of 1000 seconds)
+	nmem -m 1 -s 60          	 - 1 MB for 1 minutes (default)
+	nmem -m 6 -o "sally -x"  	 - 6 MB pretend to be process sally with parameter -x
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Usage: nlog version 2.0
+Hint: generates a log file at a steady rate to standard error
+	nlog -k Kbytes -s Seconds -m MaxSeconds -o "cmd"
+	nlog -k 1 -s 60 		is the default
+Example:
+	nlog -k 2 -s 1 -m 600         	 - 2 K per second for 10 minutes
+	nlog -k 2 -s 1                	 - 2 K per second forever
+	nlog -k 2 -s 1 -o "bert -x" 	 - 2 K per second pretend to be process bert with parameter -x
+	nlog -k 1 -s 60 -m 300        	 - 1 K per minute for 5 minutes
+	nlog -k 200 -s 1 -m 3600      	 - 200 K per second for an hour
+
+	Total of 7442 error lines
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Usage: nipc version 2.0
+nipc: hammers inter-process communication (IPC)
+      that is shared memory, semaphores and message queues
+
+hint: nipc -p procs -s seconds
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+
+Usage: nfile version 2.0
+Hint: creates and deltes files = generates JFS log file work
+nfile -d directory [-k Kbytes] [-c Files] [-m MaxSeconds] [-z percent] [-o "cmd"]
+	-d directory  - top level directory
+	-k Kbytes     - size of the files to create in KB (default 4KB)
+	-c Files      - number of files to maintain (+/- 10) (default 4096)
+	-m MaxSeconds - stop of so many seconds
+	-z percent    - percent of time to sleep/snooze
+	-o "cmd"    - pretend to be a different cmd (must be the last option)
+Example:
+	nfile -d mydir -k 1 -c 10000 -m 600 
+	nfile -d /tmp/files -k 64 -o "bert -x" 
+
+++++++++++++++++++++++ ++++++++++++++++++++++ ++++++++++++++++++++++
+

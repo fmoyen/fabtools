@@ -1,0 +1,66 @@
+#!/bin/ksh
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+#
+# nim_savevg
+# Create savevg resources with a NIM server
+# Needs a file containing the VGs for each Machine 
+
+# Release : V1.0 -  October, 4th 2008
+#  -> Use of the NIM_DIR directory
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 12`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+
+. $REP_SCRIPT/fabtools.conf
+
+
+
+SAVEVG_DIR=$NIM_DIR/savevg
+LIST_FILE=$SAVEVG_DIR/list_vg.txt
+
+while read A
+do
+  MACHINE=`echo $A | awk '{print $1}'`
+  VG=`echo $A | awk '{print $2}'`
+  
+  case $MACHINE in
+  \#*)
+    # Commentaire
+  ;;
+
+  *)
+    filename=${MACHINE}_${VG}_`date +%d%b%y_%H%M%S`
+
+    echo
+    echo "###################################################"
+    echo MACHINE = $MACHINE
+    echo VG      = $VG
+    echo nim -o define -t savevg -aserver=master -amk_image=yes -alocation=$SAVEVG_DIR/$MACHINE/$filename -asource=$MACHINE -avolume_group=$VG $filename
+    echo --------------------------
+
+    if [ ! -d $SAVEVG_DIR/$MACHINE ]
+    then
+      echo "Creating new directory: $SAVEVG_DIR/$MACHINE"
+      mkdir -p $SAVEVG_DIR/$MACHINE
+    fi
+
+    echo
+    time nim -o define -t savevg -aserver=master -amk_image=yes -alocation=$SAVEVG_DIR/$MACHINE/$filename -asource=$MACHINE -avolume_group=$VG $filename
+
+  ;;
+  esac
+
+done < $LIST_FILE

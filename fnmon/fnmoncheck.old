@@ -1,0 +1,193 @@
+#!/bin/ksh
+
+#set -x
+
+####################################################################
+# fnmoncheck
+
+####################################################################
+# Author : Fabrice MOYEN (Benchmark Manager - Montpellier - France)
+
+# Release : V13.1 -  April, 23rd 2013
+#  -> change the header RUN_ by RUN__ (to prevent problem when the runname (-r) is something like "RUN_DE_REF"
+
+# Release : V11.02 - Nomvember, 21st 2011
+#  -> Petit problème trouvé dans le fnmoncheck. Petite erreur, important conséquence qui a été révélé par  noms:wq de host qui comporte "-F"
+# Release : V11.01 - May, 27th 2011
+#  -> drastic improvement of script performance
+# Release : V9.03 -  September, 22nd 2009
+#  -> added the fnmoncheck_date.txt file report (for dailycheck script) with the -c option
+#  -> remove error message when runid file does not exist
+# Release : V9.02 -  March, 10th 2009
+#  -> Support of topas_nmon (-youtput_dir and -ystart_time were causing some prbs of fnmoncheck precedent release)
+# Release : V9.01 -  March, 10th 2009
+#  -> Added the runid (-r option)
+#  -> Added the -h option
+# Release : V1.3 -  October, 4th 2008
+#  -> Correction of little bug on REP_SCRIPT generation (11 instead of 12)
+# Release : V1.2 -  April, 23rd 2008
+#  -> Added the DAILY info for daily fnmon
+# Release : V1.1 -  February, 28th 2008
+#  -> bug correction : REP_RESULT added for the -h option.
+# Release : V1.0 -  September, 3rd 2007
+#  -> First release
+
+####################################################################
+# fnmoncheck: Display all information about all running fnmon
+#
+####################################################################
+
+#-----------------------------------------------------------
+# Load the fabtools.conf file
+
+if [ -f $PWD/fabtools.conf ]
+then
+   REP_SCRIPT=$PWD
+else
+   REP_SCRIPT=$0
+   NB_CHAR=`echo $REP_SCRIPT | wc -c`
+   NB_CHAR=`expr $NB_CHAR - 12`
+   REP_SCRIPT=`echo $REP_SCRIPT | cut -c -$NB_CHAR`
+fi
+
+. $REP_SCRIPT/fabtools.conf
+
+REP_RESULT="$REP_RACINE/fnmon/$REP_PARAM"
+
+#-----------------------------------------------------------
+# USAGE
+
+SCRIPT=$0
+
+function usage
+{
+  echo
+  echo "usage : $SCRIPT"
+  echo "        [-h]   -> displays this help" 
+  echo "        [-r]   -> displays the last run number" 
+  echo 
+  echo "        without any parameter, displays the running fnmon jobs"
+
+  echo
+}
+
+#-----------------------------------------------------------
+# TEST CASE
+
+REPORT=N
+
+if [ $# -gt 1 ]
+then
+  usage
+  exit 1
+fi
+
+if [ $# -eq 1 ]
+then
+  case $1 in
+   -h)
+     usage
+     exit 0
+   ;;
+
+   -r)
+     RUN_ID=`cat $REP_RACINE/fnmon/runid 2>/dev/null`
+     echo 
+     echo "The last RUN was the run number     : $RUN_ID"
+#     echo "The next RUN will be the run number : `expr $RUN_ID + 1`"
+     echo
+     exit 0
+   ;;
+
+   -c) # hidden function to generate a report txt file
+     REPORT=Y
+   ;;
+
+   *)
+     usage
+     exit 1
+   ;;
+  esac
+fi
+
+
+#-----------------------------------------------------------
+# Main Part
+
+echo
+date
+
+TEMPFILE=/tmp/fnmoncheck.tmp
+
+if [ $REPORT = "Y" ]
+then
+   rm $REP_RACINE/fnmon/DAILY/fnmoncheck_*
+   OUTFILE=$REP_RACINE/fnmon/DAILY/fnmoncheck_`date +%m%d%y_%H%M%S`.txt
+   touch $OUTFILE
+   echo
+   echo "DAILY status in file: $OUTFILE"
+fi
+
+RUN_ID=`cat $REP_RACINE/fnmon/runid 2>/dev/null`
+echo 
+echo "The last RUN was the run number     : $RUN_ID"
+#     echo "The next RUN will be the run number : `expr $RUN_ID + 1`"
+echo
+echo "FNMON (NMON) RUNNING : "
+
+
+for i in $NODES
+do
+   echo
+#   echo "===================================================================="
+   echo "=== $i =========================================================="
+#   echo
+   echo "STARTED\t\tSECOND\tCOUNT\tDURATION\t\tDAILY\tDIRECTORY"
+   echo "-------\t\t------\t-----\t--------\t\t-----\t---------"
+
+   > $TEMPFILE
+   $RSH $i "ps -ef" | grep MAIN.nmon | grep -v grep  >> $TEMPFILE
+
+   cat $TEMPFILE | while read ligne
+
+   do
+      FULLPATH=`echo $ligne | grep MAIN.nmon | grep -v grep | awk -F"-F " '{print $2}' | awk '{print $1}'`
+      DIRLIST=RUN__`echo $ligne | awk -F"-F " '{print $2}' | awk -F"RUN__" '{print $2}' | awk -F"/" '{print $1}'`
+      SECOND=`echo $ligne | awk -F"-s" '{print $2}' | awk '{print $1}'`
+      COUNT=`echo $ligne  | awk -F"-c" '{print $2}' | awk '{print $1}'`
+      START=`echo $ligne | awk '{print $5}'`
+      if [ `echo $START | wc -c` -eq 6 ] # ps -ef linux command does not give seconds info
+      then
+        START="${START}:--"
+      fi
+
+      echo $FULLPATH | grep "fnmon/DAILY" > /dev/null
+      if [ $? -eq 0 ] 
+      then
+         DAILY=YES
+         if [ $REPORT = "Y" ]
+         then
+	   echo "$i $DIRLIST" >> $OUTFILE
+         fi
+      else
+         DAILY=NO
+      fi
+
+      DURATION=`expr $SECOND \* $COUNT`
+      HOURDUR=`expr $DURATION / 3600`
+      DURATION=`expr $DURATION % 3600`
+      MINDUR=`expr $DURATION / 60`
+      SECDUR=`expr $DURATION % 60`
+
+      echo "$START\t\c"
+      echo "$SECOND\t\c"
+      echo "$COUNT\t\c"
+      echo "$HOURDUR h $MINDUR min $SECDUR sec\t\c"
+      echo "$DAILY\t\c"
+      echo "$DIRLIST\t\c"
+      echo
+   done
+done
+
+rm $TEMPFILE
+echo
