@@ -4,7 +4,6 @@ Developed by Fabrice MOYEN, Power system benchmark manager, IBM France.
 
 -------------------------------------------------------------------------------------
 Contact: fabrice_moyen@fr.ibm.com
-Readme release v1.0 – September, 5th 2008
 -------------------------------------------------------------------------------------
 
 The goal of these little fab-tools is to ease the administration and monitoring of several AIX/Linux systems running onto IBM Power platform (full scale servers or logical partitions), allowing you to:
@@ -17,7 +16,6 @@ The goal of these little fab-tools is to ease the administration and monitoring 
 
 -------------------------------------------------------------------------------------
 Pre-requisites:
-  + Systems with AIX operating systems installed (V5.2 or greater)
   + nmon (Nigel Griffiths monitoring tool) installed on each system.
 
 -------------------------------------------------------------------------------------
